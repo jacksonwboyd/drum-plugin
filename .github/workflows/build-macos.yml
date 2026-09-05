@@ -1,0 +1,42 @@
+name: Build Physical Drum Engine
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 3
+
+      - name: Package
+        shell: bash
+        run: |
+          set -e
+          mkdir -p artifact
+
+          find build -name "*.component" -type d -exec cp -R {} artifact/ \;
+          find build -name "*.vst3" -type d -exec cp -R {} artifact/ \;
+          find build -name "*.app" -type d -maxdepth 8 -exec cp -R {} artifact/ \;
+
+          echo "Built artifacts:"
+          find artifact -maxdepth 2 -print
+
+          test -n "$(find artifact -maxdepth 1 \( -name '*.component' -o -name '*.vst3' -o -name '*.app' \) -print -quit)"
+
+      - name: Upload plugin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Physical-Drum-Engine-macOS
+          path: artifact/
+          if-no-files-found: error
