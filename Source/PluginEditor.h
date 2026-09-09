@@ -9,7 +9,7 @@ class PhysicalDrumEngineAudioProcessorEditor final
 {
 public:
     explicit PhysicalDrumEngineAudioProcessorEditor(PhysicalDrumEngineAudioProcessor&);
-    ~PhysicalDrumEngineAudioProcessorEditor() override = default;
+    ~PhysicalDrumEngineAudioProcessorEditor() override;
 
     void paint(juce::Graphics&) override;
     void resized() override;
