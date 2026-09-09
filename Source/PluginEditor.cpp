@@ -261,7 +261,7 @@ void PhysicalDrumEngineAudioProcessorEditor::loadSelectedSample()
 void PhysicalDrumEngineAudioProcessorEditor::clearSelectedSample()
 {
     processor.pads[(size_t) selectedPad].sample.reset();
-    processor.pads[(size_t) selectedPad].sampleFile = {};
+    processor.pads[(size_t) selectedPad].sampleFile = juce::File();
     processor.stopAllVoices();
     refreshSelectedPadControls();
     refreshPadText();
