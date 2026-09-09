@@ -94,9 +94,9 @@ public:
         g.setColour(black);
         g.fillRect(0, 0, w, h);
         g.setColour(isButtonDown ? green : edgeBright);
-        g.drawRect(0, 0, w, h, 1.0f);
+        g.drawRect(juce::Rectangle<float>(0.0f, 0.0f, (float) w, (float) h), 1.0f);
         g.setColour(edge);
-        g.drawRect(3, 3, w - 6, h - 6, 1.0f);
+        g.drawRect(juce::Rectangle<float>(3.0f, 3.0f, (float) (w - 6), (float) (h - 6)), 1.0f);
         g.setColour(green);
         juce::Path p;
         p.addTriangle((float)buttonX + 5, (float)buttonY + 7, (float)buttonX + buttonW - 5, (float)buttonY + 7, (float)buttonX + buttonW * 0.5f, (float)buttonY + buttonH - 6);
