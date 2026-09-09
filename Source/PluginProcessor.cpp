@@ -130,7 +130,9 @@ void PhysicalDrumEngineAudioProcessor::triggerPad(int padIndex, float velocity)
     voice->pad = padIndex;
     const auto& pad = pads[padIndex];
     const int total = pad.sample->getNumSamples();
-    voice->pos = juce::jlimit(0.0, std::max(0.0, (double) total - 1.0), pad.startNorm * std::max(1, total - 1));
+    const double maxPosition = std::max(0.0, (double) total - 1.0);
+    const double startPosition = (double) pad.startNorm * (double) std::max(1, total - 1);
+    voice->pos = juce::jlimit(0.0, maxPosition, startPosition);
     voice->rate = velocityDurationRate * pitchRate * (pad.sampleRate / currentSampleRate);
     voice->velocity = vel;
     voice->pitchCents = cents;
@@ -311,12 +313,16 @@ void PhysicalDrumEngineAudioProcessor::loadFactorySnare()
 
 void PhysicalDrumEngineAudioProcessor::resetParametersToDefaults()
 {
-    auto defaults = createParameters();
-    for (const auto& parameter : defaults)
+    static constexpr const char* ids[] =
     {
-        if (auto* current = apvts.getParameter(parameter->getParameterID().getParamID()))
-            current->setValueNotifyingHost(parameter->getDefaultValue());
-    }
+        "physicality", "transient", "attack", "brightness", "pitch", "body",
+        "decay", "timing", "variation", "output", "mix", "sampleRate",
+        "sustain", "release", "limiter", "ceiling"
+    };
+
+    for (const auto* id : ids)
+        if (auto* parameter = apvts.getParameter(id))
+            parameter->setValueNotifyingHost(parameter->getDefaultValue());
 }
 
 void PhysicalDrumEngineAudioProcessor::newKit()
