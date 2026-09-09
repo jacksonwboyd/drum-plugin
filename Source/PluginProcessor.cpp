@@ -304,7 +304,7 @@ void PhysicalDrumEngineAudioProcessor::loadFactorySnare()
             reader->read(audio.get(), 0, (int) reader->lengthInSamples, 0, true, true);
             pads[1].sample = std::move(audio);
             pads[1].sampleRate = reader->sampleRate;
-            pads[1].sampleFile = {};
+            pads[1].sampleFile = juce::File();
         }
     }
 }
