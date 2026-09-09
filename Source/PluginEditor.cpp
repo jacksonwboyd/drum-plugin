@@ -59,7 +59,13 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
 
     setupButton(newKitButton, "New Kit", [this]
     {
-        if (juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::WarningIcon, "New Kit", "Clear the current kit and start fresh?"))
+        if (juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::WarningIcon,
+                                                "New Kit",
+                                                "Clear the current kit and start fresh?",
+                                                "OK",
+                                                "Cancel",
+                                                nullptr,
+                                                nullptr))
         {
             processor.newKit();
             selectPad(0);
