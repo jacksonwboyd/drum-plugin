@@ -132,7 +132,7 @@ void PhysicalDrumEngineAudioProcessor::triggerPad(int padIndex, float velocity)
     const int total = pad.sample->getNumSamples();
     const double maxPosition = std::max(0.0, (double) total - 1.0);
     const double startPosition = (double) pad.startNorm * (double) std::max(1, total - 1);
-    voice->pos = juce::jlimit(0.0, maxPosition, startPosition);
+    voice->pos = std::clamp(startPosition, 0.0, maxPosition);
     voice->rate = velocityDurationRate * pitchRate * (pad.sampleRate / currentSampleRate);
     voice->velocity = vel;
     voice->pitchCents = cents;
@@ -343,7 +343,7 @@ void PhysicalDrumEngineAudioProcessor::newKit()
 
 bool PhysicalDrumEngineAudioProcessor::saveKit(const juce::File& file)
 {
-    if (file == juce::File{}) return false;
+    if (file == juce::File()) return false;
     auto root = std::make_unique<juce::XmlElement>("PHYSICAL_DRUM_KIT");
     root->setAttribute("version", "1.8");
     if (auto params = apvts.copyState().createXml()) root->addChildElement(params.release());
