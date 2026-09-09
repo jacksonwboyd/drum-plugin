@@ -60,7 +60,7 @@ public:
     bool isPaused() const { return paused.load(); }
 
     void newKit();
-    bool saveKit(const juce::File& file) const;
+    bool saveKit(const juce::File& file);
     bool loadKit(const juce::File& file);
     void resetParametersToDefaults();
 
