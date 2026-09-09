@@ -48,7 +48,7 @@ public:
 
     void drawButtonText(juce::Graphics& g, juce::TextButton& b, bool, bool) override
     {
-        auto f = juce::Font(juce::FontOptions{}.withHeight(std::min(15.0f, (float)b.getHeight() * 0.55f)).withTypefaceStyle("Bold"));
+        auto f = juce::Font(juce::FontOptions{}.withHeight(std::min(15.0f, (float)b.getHeight() * 0.55f)).withStyle("Bold"));
         g.setFont(f);
         g.setColour(b.getToggleState() ? green : text);
         g.drawText(b.getButtonText(), b.getLocalBounds().reduced(3), juce::Justification::centred, true);
@@ -127,7 +127,7 @@ void drawBevel(juce::Graphics& g, juce::Rectangle<int> r, bool bright = false)
 void drawSectionTitle(juce::Graphics& g, juce::Rectangle<int> r, const juce::String& title)
 {
     g.setColour(text);
-    g.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withTypefaceStyle("Bold")));
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withStyle("Bold")));
     g.drawText(title, r.getX() + 10, r.getY() + 4, r.getWidth() - 20, 20, juce::Justification::left, false);
     g.setColour(edge);
     g.drawLine((float)r.getX() + 8, (float)r.getY() + 27, (float)r.getRight() - 8, (float)r.getY() + 27, 1.0f);
@@ -146,23 +146,23 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
     addAndMakeVisible(windowTitle);
 
     menuBar.setText("File     Edit     Kits     Options     Help", juce::dontSendNotification);
-    menuBar.setFont(juce::Font(juce::FontOptions{}.withHeight(18.0f).withTypefaceStyle("Bold")));
+    menuBar.setFont(juce::Font(juce::FontOptions{}.withHeight(18.0f).withStyle("Bold")));
     menuBar.setColour(juce::Label::textColourId, text);
     addAndMakeVisible(menuBar);
 
     marquee.setText("SAMPLES FEEL BETTER HERE.", juce::dontSendNotification);
-    marquee.setFont(juce::Font(juce::FontOptions{}.withHeight(16.0f).withTypefaceStyle("Bold")));
+    marquee.setFont(juce::Font(juce::FontOptions{}.withHeight(16.0f).withStyle("Bold")));
     marquee.setJustificationType(juce::Justification::centredRight);
     marquee.setColour(juce::Label::textColourId, green);
     addAndMakeVisible(marquee);
 
     lcdTitle.setText("PHYSICAL DRUM ENGINE v1.8", juce::dontSendNotification);
-    lcdTitle.setFont(juce::Font(juce::FontOptions{}.withHeight(24.0f).withTypefaceStyle("Bold")));
+    lcdTitle.setFont(juce::Font(juce::FontOptions{}.withHeight(24.0f).withStyle("Bold")));
     lcdTitle.setColour(juce::Label::textColourId, green);
     addAndMakeVisible(lcdTitle);
 
     lcdStatus.setText("LOAD. DISTORT. DEGRADE. PLAY.", juce::dontSendNotification);
-    lcdStatus.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withTypefaceStyle("Bold")));
+    lcdStatus.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withStyle("Bold")));
     lcdStatus.setColour(juce::Label::textColourId, green);
     addAndMakeVisible(lcdStatus);
 
@@ -182,20 +182,20 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
         const auto& pad = processor.pads[(size_t)i];
         padLabels[(size_t)i].setJustificationType(juce::Justification::centred);
         padLabels[(size_t)i].setColour(juce::Label::textColourId, muted);
-        padLabels[(size_t)i].setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withTypefaceStyle("Bold")));
+        padLabels[(size_t)i].setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withStyle("Bold")));
         addAndMakeVisible(padLabels[(size_t)i]);
         setupButton(padButtons[(size_t)i], pad.name, [this, i] { selectPad(i, true); });
     }
 
     selectedPadInfo.setJustificationType(juce::Justification::centredLeft);
     selectedPadInfo.setColour(juce::Label::textColourId, green);
-    selectedPadInfo.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withTypefaceStyle("Bold")));
+    selectedPadInfo.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withStyle("Bold")));
     addAndMakeVisible(selectedPadInfo);
 
     setupButton(loadSampleButton, "LOAD", [this] { loadSelectedSample(); });
     setupButton(clearSampleButton, "CLEAR", [this] { clearSelectedSample(); });
     sampleName.setColour(juce::Label::textColourId, green);
-    sampleName.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withTypefaceStyle("Bold")));
+    sampleName.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withStyle("Bold")));
     addAndMakeVisible(sampleName);
     sampleInfo.setColour(juce::Label::textColourId, muted);
     sampleInfo.setFont(juce::Font(juce::FontOptions{}.withHeight(12.0f)));
@@ -211,7 +211,7 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
         sampleKnobLabels[(size_t)i].setText(sampleNames[(size_t)i], juce::dontSendNotification);
         sampleKnobLabels[(size_t)i].setJustificationType(juce::Justification::centred);
         sampleKnobLabels[(size_t)i].setColour(juce::Label::textColourId, muted);
-        sampleKnobLabels[(size_t)i].setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withTypefaceStyle("Bold")));
+        sampleKnobLabels[(size_t)i].setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withStyle("Bold")));
         addAndMakeVisible(sampleKnobLabels[(size_t)i]);
         addAndMakeVisible(s);
     }
@@ -318,7 +318,7 @@ void PhysicalDrumEngineAudioProcessorEditor::setupKnob(juce::Slider& slider, juc
     label.setText(name, juce::dontSendNotification);
     label.setJustificationType(juce::Justification::centred);
     label.setColour(juce::Label::textColourId, muted);
-    label.setFont(juce::Font(juce::FontOptions{}.withHeight(8.0f).withTypefaceStyle("Bold").withHorizontalScale(0.62f)));
+    label.setFont(juce::Font(juce::FontOptions{}.withHeight(8.0f).withStyle("Bold").withHorizontalScale(0.62f)));
     label.setMinimumHorizontalScale(0.55f);
     addAndMakeVisible(label);
     addAndMakeVisible(slider);
@@ -470,8 +470,11 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     auto outer = getLocalBounds().reduced(8);
 
     // Winamp-style metal shell
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff1a2a39), outer.getTopLeft(), juce::Colour(0xff07111a), outer.getBottomLeft(), false));
+    // JUCE 8-compatible metal shell: layered fills instead of ColourGradient constructor.
+    g.setColour(juce::Colour(0xff142331));
     g.fillRect(outer);
+    g.setColour(juce::Colour(0xff08131d));
+    g.fillRect(outer.reduced(3));
     g.setColour(edgeBright); g.drawRect(outer, 2);
     g.setColour(juce::Colour(0xff24394d)); g.drawRect(outer.reduced(4), 2);
 
@@ -491,9 +494,9 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     bolt.closeSubPath();
     g.setColour(juce::Colours::white); g.fillPath(bolt);
     g.setColour(juce::Colour(0xffffc20a)); g.strokePath(bolt, juce::PathStrokeType(2.0f));
-    g.setColour(text); g.setFont(juce::Font(juce::FontOptions{}.withHeight(24.0f).withTypefaceStyle("Bold")));
+    g.setColour(text); g.setFont(juce::Font(juce::FontOptions{}.withHeight(24.0f).withStyle("Bold")));
     g.drawText("WINAMP", header.getX()+55, header.getY()+12, 160, 28, juce::Justification::left);
-    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(13.0f).withTypefaceStyle("Bold")));
+    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(13.0f).withStyle("Bold")));
     g.drawText("PHYSICAL DRUM ENGINE", header.getX()+235, header.getY()+13, 290, 22, juce::Justification::left);
     g.setColour(green); g.drawText("SAMPLES FEEL BETTER HERE.", header.getRight()-330, header.getY()+13, 310, 22, juce::Justification::right);
 
@@ -516,7 +519,7 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     auto player = center.removeFromTop(116);
     drawBevel(g, player, true);
     g.setColour(black); g.fillRect(player.reduced(10));
-    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(27.0f).withTypefaceStyle("Bold")));
+    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(27.0f).withStyle("Bold")));
     g.drawText("00:00", player.getX()+18, player.getY()+16, 125, 34, juce::Justification::left);
     g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f)));
     g.drawText("128 BPM", player.getX()+19, player.getY()+51, 70, 16, juce::Justification::left);
@@ -594,7 +597,7 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     auto midi = left.removeFromTop(std::max(120, left.getHeight()));
     drawBevel(g, midi); drawSectionTitle(g, midi, "MIDI");
     midiMapBox.setBounds(midi.getX()+12,midi.getY()+38,midi.getWidth()-24,30);
-    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f).withTypefaceStyle("Bold")));
+    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f).withStyle("Bold")));
     g.drawText("VELOCITY", midi.getX()+12, midi.getY()+78, 70, 16, juce::Justification::left);
     velocitySlider.setBounds(midi.getRight()-100,midi.getY()+55,80,70);
     volumeSlider.setBounds(midi.getX()+12,midi.getY()+112,1,1);
@@ -631,7 +634,7 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     for(auto mr:{meterL,meterR}) { g.setColour(black); g.fillRect(mr); g.setColour(edge); g.drawRect(mr,1); }
     g.setColour(green); g.fillRect(meterL.withTop(meterL.getBottom()-(int)(meterL.getHeight()*l)));
     g.setColour(green); g.fillRect(meterR.withTop(meterR.getBottom()-(int)(meterR.getHeight()*r)));
-    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withTypefaceStyle("Bold")));
+    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withStyle("Bold")));
     g.drawText("L",meterL.getX(),meterL.getBottom()+6,meterL.getWidth(),14,juce::Justification::centred);
     g.drawText("R",meterR.getX(),meterR.getBottom()+6,meterR.getWidth(),14,juce::Justification::centred);
     limiterButton.setBounds(out.getRight()-92,out.getY()+48,72,30);
