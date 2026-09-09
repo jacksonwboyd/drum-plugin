@@ -325,7 +325,7 @@ void PhysicalDrumEngineAudioProcessor::newKit()
     for (auto& pad : pads)
     {
         pad.sample.reset();
-        pad.sampleFile = {};
+        pad.sampleFile = juce::File();
         pad.trim = 1.0f;
         pad.tuneCents = 0.0f;
         pad.startNorm = 0.0f;
@@ -335,7 +335,7 @@ void PhysicalDrumEngineAudioProcessor::newKit()
     resetParametersToDefaults();
 }
 
-bool PhysicalDrumEngineAudioProcessor::saveKit(const juce::File& file) const
+bool PhysicalDrumEngineAudioProcessor::saveKit(const juce::File& file)
 {
     if (file == juce::File{}) return false;
     auto root = std::make_unique<juce::XmlElement>("PHYSICAL_DRUM_KIT");
@@ -380,7 +380,7 @@ bool PhysicalDrumEngineAudioProcessor::loadKit(const juce::File& file)
         pad.level = juce::jlimit(0.0f, 2.0f, (float) node->getDoubleAttribute("level", 1.0));
         const juce::File sample(node->getStringAttribute("file"));
         pad.sample.reset();
-        pad.sampleFile = {};
+        pad.sampleFile = juce::File();
         if (sample.existsAsFile()) loadSampleForPad(index, sample);
     }
     return true;
