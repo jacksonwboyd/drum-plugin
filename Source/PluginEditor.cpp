@@ -2,104 +2,126 @@
 
 namespace
 {
-const juce::Colour bg          (0xff07111a);
-const juce::Colour panel       (0xff0d1b28);
-const juce::Colour panel2      (0xff101f2d);
-const juce::Colour edge        (0xff6f8398);
-const juce::Colour edgeBright  (0xffb9c9d8);
-const juce::Colour green       (0xff49ff20);
-const juce::Colour greenDim    (0xff1f9f19);
-const juce::Colour text        (0xffe7edf2);
-const juce::Colour muted       (0xffa7b3bd);
-const juce::Colour black       (0xff020507);
+const juce::Colour shellDark       (0xff080d12);
+const juce::Colour shellMid        (0xff18232c);
+const juce::Colour shellLight      (0xff3c4a55);
+const juce::Colour shellEdge       (0xff788691);
+const juce::Colour bevelDark       (0xff10171d);
+const juce::Colour panelBlack      (0xff020608);
+const juce::Colour panelBlue       (0xff0a1219);
+const juce::Colour panelBlue2      (0xff111c25);
+const juce::Colour green           (0xff72ff38);
+const juce::Colour greenDark       (0xff1f9b20);
+const juce::Colour amber           (0xffffc400);
+const juce::Colour text            (0xffdbe4e9);
+const juce::Colour muted           (0xff8997a0);
+const juce::Colour black           (0xff010203);
 
 class WinampLookAndFeel final : public juce::LookAndFeel_V4
 {
 public:
     WinampLookAndFeel()
     {
-        setColour(juce::TextButton::buttonColourId, panel2);
-        setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff183c19));
+        setColour(juce::TextButton::buttonColourId, panelBlue2);
+        setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff1d401e));
         setColour(juce::TextButton::textColourOffId, text);
         setColour(juce::TextButton::textColourOnId, green);
         setColour(juce::ComboBox::backgroundColourId, black);
-        setColour(juce::ComboBox::outlineColourId, edge);
+        setColour(juce::ComboBox::outlineColourId, shellEdge);
         setColour(juce::ComboBox::textColourId, green);
         setColour(juce::Slider::textBoxTextColourId, green);
         setColour(juce::Slider::textBoxBackgroundColourId, black);
-        setColour(juce::Slider::textBoxOutlineColourId, edge);
+        setColour(juce::Slider::textBoxOutlineColourId, shellEdge);
+    }
+
+    static juce::Font pixelFont(float height, bool bold = false)
+    {
+        auto options = juce::FontOptions{}.withHeight(height).withTypefaceName("DejaVu Sans Mono");
+        if (bold) options = options.withStyle("Bold");
+        return juce::Font(options);
     }
 
     void drawButtonBackground(juce::Graphics& g, juce::Button& b, const juce::Colour&, bool over, bool down) override
     {
         auto r = b.getLocalBounds().toFloat().reduced(1.0f);
-        g.setColour(down ? juce::Colour(0xff172b3b) : (over ? juce::Colour(0xff1a3043) : panel2));
+        const bool on = b.getToggleState();
+        g.setColour(down ? juce::Colour(0xff070c10) : (on ? juce::Colour(0xff153b18) : (over ? juce::Colour(0xff253640) : juce::Colour(0xff17232c))));
         g.fillRect(r);
-        g.setColour(edgeBright);
-        g.drawRect(r, 1.0f);
-        g.setColour(juce::Colour(0xff283c50));
-        g.drawRect(r.reduced(3.0f), 1.0f);
-        if (b.getToggleState())
+
+        // Hard-edged Winamp bevel: bright upper/left, dark lower/right.
+        g.setColour(down ? shellLight : shellEdge);
+        g.drawLine(r.getX(), r.getY(), r.getRight(), r.getY(), 1.0f);
+        g.drawLine(r.getX(), r.getY(), r.getX(), r.getBottom(), 1.0f);
+        g.setColour(black);
+        g.drawLine(r.getX(), r.getBottom(), r.getRight(), r.getBottom(), 1.0f);
+        g.drawLine(r.getRight(), r.getY(), r.getRight(), r.getBottom(), 1.0f);
+        g.setColour(juce::Colour(0xff2d3d48));
+        g.drawRect(r.reduced(2.0f), 1.0f);
+        if (on || down)
         {
             g.setColour(green);
-            g.drawRect(r.reduced(1.5f), 2.0f);
+            g.drawRect(r.reduced(2.0f), 1.0f);
         }
     }
 
     void drawButtonText(juce::Graphics& g, juce::TextButton& b, bool, bool) override
     {
-        auto f = juce::Font(juce::FontOptions{}.withHeight(std::min(15.0f, (float)b.getHeight() * 0.55f)).withStyle("Bold"));
-        g.setFont(f);
+        g.setFont(pixelFont(std::min(12.0f, (float)b.getHeight() * 0.48f), true));
         g.setColour(b.getToggleState() ? green : text);
-        g.drawText(b.getButtonText(), b.getLocalBounds().reduced(3), juce::Justification::centred, true);
+        g.drawText(b.getButtonText(), b.getLocalBounds().reduced(2), juce::Justification::centred, true);
     }
 
     void drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float startAngle, float endAngle, juce::Slider& slider) override
     {
-        const float size = (float)std::min(w, h) - 4.0f;
-        const float cx = x + w * 0.5f;
-        const float cy = y + h * 0.43f;
-        const float radius = size * 0.38f;
+        const float size = (float)std::min(w, h) - 5.0f;
+        const float cx = (float)x + (float)w * 0.5f;
+        const float cy = (float)y + (float)h * 0.42f;
+        const float radius = size * 0.36f;
         const float angle = startAngle + pos * (endAngle - startAngle);
 
-        g.setColour(juce::Colour(0xff02070b));
-        g.fillEllipse(cx - radius - 4, cy - radius - 4, (radius + 4) * 2, (radius + 4) * 2);
-        g.setColour(edge);
-        g.drawEllipse(cx - radius - 3, cy - radius - 3, (radius + 3) * 2, (radius + 3) * 2, 1.0f);
-        g.setColour(juce::Colour(0xff1c2c3b));
-        g.fillEllipse(cx - radius, cy - radius, radius * 2, radius * 2);
-        g.setColour(juce::Colour(0xff536678));
-        g.drawEllipse(cx - radius, cy - radius, radius * 2, radius * 2, 1.0f);
+        g.setColour(black);
+        g.fillEllipse(cx - radius - 5.0f, cy - radius - 5.0f, (radius + 5.0f) * 2.0f, (radius + 5.0f) * 2.0f);
+        g.setColour(shellEdge);
+        g.drawEllipse(cx - radius - 4.0f, cy - radius - 4.0f, (radius + 4.0f) * 2.0f, (radius + 4.0f) * 2.0f, 1.0f);
+        g.setColour(juce::Colour(0xff293740));
+        g.fillEllipse(cx - radius, cy - radius, radius * 2.0f, radius * 2.0f);
+        g.setColour(juce::Colour(0xff65747e));
+        g.drawEllipse(cx - radius, cy - radius, radius * 2.0f, radius * 2.0f, 1.0f);
+        g.setColour(juce::Colour(0xff111a20));
+        g.fillEllipse(cx - radius + 3.0f, cy - radius + 3.0f, (radius - 3.0f) * 2.0f, (radius - 3.0f) * 2.0f);
 
         juce::Path arc;
-        arc.addCentredArc(cx, cy, radius + 2, radius + 2, 0.0f, startAngle, angle, true);
-        g.setColour(green);
-        g.strokePath(arc, juce::PathStrokeType(3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        arc.addCentredArc(cx, cy, radius + 2.0f, radius + 2.0f, 0.0f, startAngle, angle, true);
+        g.setColour(greenDark);
+        g.strokePath(arc, juce::PathStrokeType(2.0f));
 
         juce::Path tick;
-        tick.startNewSubPath(cx + std::cos(angle) * radius * 0.22f, cy + std::sin(angle) * radius * 0.22f);
-        tick.lineTo(cx + std::cos(angle) * radius * 0.78f, cy + std::sin(angle) * radius * 0.78f);
-        g.setColour(edgeBright);
+        tick.startNewSubPath(cx + std::cos(angle) * radius * 0.20f, cy + std::sin(angle) * radius * 0.20f);
+        tick.lineTo(cx + std::cos(angle) * radius * 0.80f, cy + std::sin(angle) * radius * 0.80f);
+        g.setColour(green);
         g.strokePath(tick, juce::PathStrokeType(2.0f));
 
         if (slider.isMouseOver())
         {
-            g.setColour(juce::Colours::white.withAlpha(0.10f));
-            g.fillEllipse(cx - radius + 2, cy - radius + 2, (radius - 2) * 2, (radius - 2) * 2);
+            g.setColour(juce::Colours::white.withAlpha(0.08f));
+            g.fillEllipse(cx - radius + 3.0f, cy - radius + 3.0f, (radius - 3.0f) * 2.0f, (radius - 3.0f) * 2.0f);
         }
     }
 
     void drawComboBox(juce::Graphics& g, int w, int h, bool isButtonDown, int buttonX, int buttonY, int buttonW, int buttonH, juce::ComboBox& box) override
     {
+        juce::ignoreUnused(box);
         g.setColour(black);
         g.fillRect(0, 0, w, h);
-        g.setColour(isButtonDown ? green : edgeBright);
-        g.drawRect(juce::Rectangle<float>(0.0f, 0.0f, (float) w, (float) h), 1.0f);
-        g.setColour(edge);
-        g.drawRect(juce::Rectangle<float>(3.0f, 3.0f, (float) (w - 6), (float) (h - 6)), 1.0f);
+        g.setColour(isButtonDown ? green : shellEdge);
+        g.drawRect(juce::Rectangle<float>(0.0f, 0.0f, (float)w, (float)h), 1.0f);
+        g.setColour(juce::Colour(0xff283843));
+        g.drawRect(juce::Rectangle<float>(2.0f, 2.0f, (float)std::max(0, w - 4), (float)std::max(0, h - 4)), 1.0f);
         g.setColour(green);
         juce::Path p;
-        p.addTriangle((float)buttonX + 5, (float)buttonY + 7, (float)buttonX + buttonW - 5, (float)buttonY + 7, (float)buttonX + buttonW * 0.5f, (float)buttonY + buttonH - 6);
+        p.addTriangle((float)buttonX + 5.0f, (float)buttonY + 7.0f,
+                      (float)buttonX + (float)buttonW - 5.0f, (float)buttonY + 7.0f,
+                      (float)buttonX + (float)buttonW * 0.5f, (float)buttonY + (float)buttonH - 6.0f);
         g.fillPath(p);
     }
 };
@@ -116,21 +138,35 @@ juce::String valueForParameter(const juce::AudioProcessorValueTreeState& state, 
 
 void drawBevel(juce::Graphics& g, juce::Rectangle<int> r, bool bright = false)
 {
-    g.setColour(panel);
-    g.fillRect(r);
-    g.setColour(bright ? edgeBright : edge);
-    g.drawRect(r, 1);
-    g.setColour(juce::Colour(0xff23394d));
-    g.drawRect(r.reduced(3), 1);
+    const auto rf = r.toFloat();
+    g.setColour(shellMid);
+    g.fillRect(rf);
+    g.setColour(bright ? shellEdge : shellLight);
+    g.drawRect(rf, 1.0f);
+    g.setColour(black);
+    g.drawLine((float)r.getX() + 1.0f, (float)r.getBottom() - 2.0f, (float)r.getRight() - 1.0f, (float)r.getBottom() - 2.0f, 2.0f);
+    g.drawLine((float)r.getRight() - 2.0f, (float)r.getY() + 1.0f, (float)r.getRight() - 2.0f, (float)r.getBottom() - 1.0f, 2.0f);
+    g.setColour(juce::Colour(0xff273640));
+    g.drawRect(r.reduced(3).toFloat(), 1.0f);
 }
 
 void drawSectionTitle(juce::Graphics& g, juce::Rectangle<int> r, const juce::String& title)
 {
+    g.setColour(juce::Colour(0xff1a2730));
+    g.fillRect(r.getX() + 2, r.getY() + 2, r.getWidth() - 4, 27);
+    g.setColour(shellEdge);
+    g.drawLine((float)r.getX() + 5.0f, (float)r.getY() + 28.0f, (float)r.getRight() - 5.0f, (float)r.getY() + 28.0f, 1.0f);
     g.setColour(text);
-    g.setFont(juce::Font(juce::FontOptions{}.withHeight(15.0f).withStyle("Bold")));
-    g.drawText(title, r.getX() + 10, r.getY() + 4, r.getWidth() - 20, 20, juce::Justification::left, false);
-    g.setColour(edge);
-    g.drawLine((float)r.getX() + 8, (float)r.getY() + 27, (float)r.getRight() - 8, (float)r.getY() + 27, 1.0f);
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(12.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.drawText(title.toUpperCase(), r.getX() + 9, r.getY() + 5, r.getWidth() - 18, 18, juce::Justification::left, false);
+}
+
+void drawScrew(juce::Graphics& g, float x, float y)
+{
+    g.setColour(juce::Colour(0xff71808a));
+    g.fillEllipse(x - 3.0f, y - 3.0f, 6.0f, 6.0f);
+    g.setColour(black);
+    g.drawLine(x - 2.0f, y - 2.0f, x + 2.0f, y + 2.0f, 1.0f);
 }
 }
 
@@ -466,180 +502,222 @@ void PhysicalDrumEngineAudioProcessorEditor::timerCallback()
 
 void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff02060a));
-    auto outer = getLocalBounds().reduced(8);
+    g.fillAll(black);
+    auto outer = getLocalBounds().reduced(7);
 
-    // Winamp-style metal shell
-    // JUCE 8-compatible metal shell: layered fills instead of ColourGradient constructor.
-    g.setColour(juce::Colour(0xff142331));
-    g.fillRect(outer);
-    g.setColour(juce::Colour(0xff08131d));
-    g.fillRect(outer.reduced(3));
-    g.setColour(edgeBright); g.drawRect(outer, 2);
-    g.setColour(juce::Colour(0xff24394d)); g.drawRect(outer.reduced(4), 2);
+    // === WINAMP METAL SHELL ===
+    g.setColour(shellDark); g.fillRect(outer);
+    g.setColour(shellLight); g.drawRect(outer.toFloat(), 2.0f);
+    g.setColour(black); g.drawRect(outer.reduced(4).toFloat(), 2.0f);
+    g.setColour(juce::Colour(0xff26343e)); g.drawRect(outer.reduced(7).toFloat(), 1.0f);
+    drawScrew(g, (float)outer.getX() + 8.0f, (float)outer.getY() + 8.0f);
+    drawScrew(g, (float)outer.getRight() - 8.0f, (float)outer.getY() + 8.0f);
+    drawScrew(g, (float)outer.getX() + 8.0f, (float)outer.getBottom() - 8.0f);
+    drawScrew(g, (float)outer.getRight() - 8.0f, (float)outer.getBottom() - 8.0f);
 
-    auto header = outer.removeFromTop(70);
-    g.setColour(juce::Colour(0xff08131d)); g.fillRect(header);
-    g.setColour(edgeBright); g.drawRect(header, 1);
+    // Header: compact early-2000s media-player chrome.
+    auto header = outer.removeFromTop(58);
+    g.setColour(juce::Colour(0xff1b2832)); g.fillRect(header);
+    g.setColour(shellEdge); g.drawRect(header.toFloat(), 1.0f);
+    g.setColour(black); g.drawLine((float)header.getX(), (float)header.getBottom()-2.0f, (float)header.getRight(), (float)header.getBottom()-2.0f, 2.0f);
 
-    // Lightning logo / WINAMP wordmark
     juce::Path bolt;
-    bolt.startNewSubPath((float)header.getX()+18, (float)header.getY()+12);
-    bolt.lineTo((float)header.getX()+39, (float)header.getY()+8);
-    bolt.lineTo((float)header.getX()+30, (float)header.getY()+27);
-    bolt.lineTo((float)header.getX()+47, (float)header.getY()+25);
-    bolt.lineTo((float)header.getX()+20, (float)header.getY()+57);
-    bolt.lineTo((float)header.getX()+27, (float)header.getY()+34);
-    bolt.lineTo((float)header.getX()+12, (float)header.getY()+36);
+    bolt.startNewSubPath((float)header.getX()+18.0f, (float)header.getY()+8.0f);
+    bolt.lineTo((float)header.getX()+39.0f, (float)header.getY()+5.0f);
+    bolt.lineTo((float)header.getX()+30.0f, (float)header.getY()+23.0f);
+    bolt.lineTo((float)header.getX()+47.0f, (float)header.getY()+21.0f);
+    bolt.lineTo((float)header.getX()+19.0f, (float)header.getY()+51.0f);
+    bolt.lineTo((float)header.getX()+26.0f, (float)header.getY()+30.0f);
+    bolt.lineTo((float)header.getX()+11.0f, (float)header.getY()+32.0f);
     bolt.closeSubPath();
     g.setColour(juce::Colours::white); g.fillPath(bolt);
-    g.setColour(juce::Colour(0xffffc20a)); g.strokePath(bolt, juce::PathStrokeType(2.0f));
-    g.setColour(text); g.setFont(juce::Font(juce::FontOptions{}.withHeight(24.0f).withStyle("Bold")));
-    g.drawText("WINAMP", header.getX()+55, header.getY()+12, 160, 28, juce::Justification::left);
-    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(13.0f).withStyle("Bold")));
-    g.drawText("PHYSICAL DRUM ENGINE", header.getX()+235, header.getY()+13, 290, 22, juce::Justification::left);
-    g.setColour(green); g.drawText("SAMPLES FEEL BETTER HERE.", header.getRight()-330, header.getY()+13, 310, 22, juce::Justification::right);
+    g.setColour(amber); g.strokePath(bolt, juce::PathStrokeType(1.5f));
 
-    // Menu strip
-    auto menu = outer.removeFromTop(34);
-    g.setColour(juce::Colour(0xff101d2a)); g.fillRect(menu);
-    g.setColour(edge); g.drawRect(menu, 1);
+    g.setColour(text);
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(21.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.drawText("WINAMP", header.getX()+57, header.getY()+8, 150, 24, juce::Justification::left);
+    g.setColour(green);
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.drawText("PHYSICAL DRUM ENGINE", header.getX()+205, header.getY()+10, 280, 18, juce::Justification::left);
+    g.drawText("[ DIGITAL AUDIO // 12 PAD ]", header.getX()+205, header.getY()+29, 280, 16, juce::Justification::left);
+    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.drawText("SAMPLES FEEL BETTER HERE.", header.getRight()-255, header.getY()+13, 235, 18, juce::Justification::right);
 
-    auto body = outer.reduced(10);
-    const int leftW = 285;
-    const int centerW = 735;
+    // Menu strip (cosmetic only, as in the reference skin).
+    auto menu = outer.removeFromTop(26);
+    g.setColour(juce::Colour(0xff0b1116)); g.fillRect(menu);
+    g.setColour(shellEdge); g.drawRect(menu.toFloat(), 1.0f);
+    g.setColour(text);
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f).withTypefaceName("DejaVu Sans Mono")));
+    g.drawText("File    Edit    Kits    Options    Help", menu.getX()+10, menu.getY()+5, 270, 15, juce::Justification::left);
+    g.setColour(green);
+    g.drawText("READY", menu.getRight()-75, menu.getY()+5, 62, 15, juce::Justification::right);
+
+    auto body = outer.reduced(9);
+    const int leftW = 270;
+    const int centerW = 740;
     const int rightW = body.getWidth() - leftW - centerW - 20;
+    juce::ignoreUnused(rightW);
     auto left = body.removeFromLeft(leftW);
     body.removeFromLeft(10);
     auto center = body.removeFromLeft(centerW);
     body.removeFromLeft(10);
     auto right = body;
 
-    // Player / transport
-    auto player = center.removeFromTop(116);
+    // === PLAYER ===
+    auto player = center.removeFromTop(108);
     drawBevel(g, player, true);
-    g.setColour(black); g.fillRect(player.reduced(10));
-    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(27.0f).withStyle("Bold")));
-    g.drawText("00:00", player.getX()+18, player.getY()+16, 125, 34, juce::Justification::left);
-    g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f)));
-    g.drawText("128 BPM", player.getX()+19, player.getY()+51, 70, 16, juce::Justification::left);
-    // fake-but-reactive spectrum
+    auto lcd = player.reduced(9);
+    g.setColour(panelBlack); g.fillRect(lcd);
+    g.setColour(juce::Colour(0xff0c1a10)); g.drawRect(lcd.toFloat(), 1.0f);
+    g.setColour(green);
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(25.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.drawText("00:00", lcd.getX()+12, lcd.getY()+8, 115, 29, juce::Justification::left);
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono")));
+    g.drawText("TRACK 01", lcd.getX()+13, lcd.getY()+39, 90, 13, juce::Justification::left);
+    g.drawText("128 BPM", lcd.getX()+13, lcd.getY()+53, 90, 13, juce::Justification::left);
+
     const float peak = juce::jlimit(0.0f, 1.0f, std::max(processor.getLeftPeak(), processor.getRightPeak()));
-    for (int i=0;i<22;++i)
+    for (int i = 0; i < 32; ++i)
     {
-        const float wave = 0.25f + 0.75f * std::abs(std::sin((float)i*0.8f + peak*10.0f));
-        const int bh = 8 + (int)(wave * 22.0f * peak);
-        g.setColour(green);
-        g.fillRect(player.getX()+18+i*6, player.getBottom()-16-bh, 4, bh);
+        const float wave = 0.18f + 0.82f * std::abs(std::sin((float)i * 0.63f + peak * 7.0f));
+        const int bh = 4 + (int)(wave * 24.0f * peak);
+        g.setColour(i % 4 == 0 ? amber : green);
+        g.fillRect(lcd.getX()+120+i*5, lcd.getBottom()-10-bh, 3, bh);
     }
 
-    auto tx = player.getX()+175;
-    auto tw = player.getWidth()-195;
-    const int bw = 72;
-    int bx = tx;
+    const int bw = 64;
+    int bx = player.getX()+420;
     for (auto* b : {&previousButton,&playButton,&stopButton,&pauseButton,&nextButton})
     {
-        b->setBounds(bx, player.getY()+15, bw, 32);
-        bx += bw + 6;
+        b->setBounds(bx, player.getY()+13, bw, 29);
+        bx += bw + 5;
     }
-    lcdTitle.setBounds(tx, player.getY()+55, tw, 26);
-    lcdStatus.setBounds(tx, player.getY()+80, tw, 20);
+    lcdTitle.setBounds(player.getX()+420, player.getY()+48, player.getWidth()-435, 22);
+    lcdStatus.setBounds(player.getX()+420, player.getY()+72, player.getWidth()-435, 18);
 
-    // Pads
-    auto pads = center.removeFromTop(440);
+    // === PAD MATRIX ===
+    auto pads = center.removeFromTop(392);
     drawBevel(g, pads);
     drawSectionTitle(g, pads, "DRUM PADS");
-    auto padArea = pads.reduced(12); padArea.removeFromTop(28);
-    const int gap=8;
-    const int cw=(padArea.getWidth()-gap*3)/4;
-    const int ch=(padArea.getHeight()-gap*2)/3;
-    for (int i=0;i<PhysicalDrumEngineAudioProcessor::numPads;++i)
+    auto padArea = pads.reduced(11); padArea.removeFromTop(28);
+    const int gap = 7;
+    const int cw = (padArea.getWidth()-gap*3)/4;
+    const int ch = (padArea.getHeight()-gap*2)/3;
+    for (int i = 0; i < PhysicalDrumEngineAudioProcessor::numPads; ++i)
     {
         const int row=i/4, col=i%4;
-        auto r=juce::Rectangle<int>(padArea.getX()+col*(cw+gap),padArea.getY()+row*(ch+gap),cw,ch);
+        auto r=juce::Rectangle<int>(padArea.getX()+col*(cw+gap), padArea.getY()+row*(ch+gap), cw, ch);
         padAreas[(size_t)i]=r;
         padButtons[(size_t)i].setBounds(r);
-        padLabels[(size_t)i].setBounds(r.getX()+5,r.getBottom()-23,r.getWidth()-10,17);
-        g.setColour(i==selectedPad ? juce::Colour(0xff143c19) : juce::Colour(0xff0c1824));
+        padLabels[(size_t)i].setBounds(r.getX()+4,r.getBottom()-20,r.getWidth()-8,15);
+        g.setColour(i==selectedPad ? juce::Colour(0xff143d1a) : juce::Colour(0xff101b22));
         g.fillRect(r.reduced(2));
-        g.setColour(i==dragTargetPad || i==selectedPad ? green : edge);
-        g.drawRect(r.reduced(1), i==selectedPad ? 2.0f : 1.0f);
-        g.setColour(edgeBright.withAlpha(0.35f));
-        g.drawLine((float)r.getX()+5,(float)r.getY()+5,(float)r.getRight()-5,(float)r.getY()+5,1.0f);
-        g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f)));
-        g.drawText(juce::String(i+1), r.getRight()-19, r.getBottom()-18, 12, 12, juce::Justification::right);
+        g.setColour(i==selectedPad || i==dragTargetPad ? green : shellEdge);
+        g.drawRect(r.toFloat().reduced(1.0f), i==selectedPad ? 2.0f : 1.0f);
+        g.setColour(juce::Colour(0xff344650));
+        g.drawLine((float)r.getX()+5.0f,(float)r.getY()+5.0f,(float)r.getRight()-5.0f,(float)r.getY()+5.0f,1.0f);
+        g.setColour(green);
+        g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+        g.drawText(juce::String::formatted("%02d", i+1), r.getX()+8, r.getY()+8, 24, 13, juce::Justification::left);
     }
 
-    // Selected-pad status strip beneath the pad matrix.
-    auto statusStrip = juce::Rectangle<int>(center.getX(), center.getBottom()-64, center.getWidth(), 54);
+    auto statusStrip = juce::Rectangle<int>(center.getX(), center.getBottom()-56, center.getWidth(), 48);
     drawBevel(g, statusStrip);
-    selectedPadInfo.setBounds(statusStrip.getX()+12, statusStrip.getY()+14, statusStrip.getWidth()-24, 24);
+    selectedPadInfo.setBounds(statusStrip.getX()+10,statusStrip.getY()+12,statusStrip.getWidth()-20,22);
 
-    // Left kits + controls
-    auto kitList=left.removeFromTop(430); drawBevel(g,kitList); drawSectionTitle(g,kitList,"KITS");
-    presetBrowser.setBounds(kitList.getX()+12,kitList.getY()+38,kitList.getWidth()-24,kitList.getHeight()-154);
-    newKitButton.setBounds(kitList.getX()+12,kitList.getBottom()-104,122,30);
-    saveKitButton.setBounds(kitList.getX()+145,kitList.getBottom()-104,122,30);
-    loadKitButton.setBounds(kitList.getX()+12,kitList.getBottom()-64,122,30);
-    importButton.setBounds(kitList.getX()+145,kitList.getBottom()-64,122,30);
+    // === KITS ===
+    auto kitList=left.removeFromTop(405);
+    drawBevel(g,kitList,true); drawSectionTitle(g,kitList,"KITS");
+    presetBrowser.setBounds(kitList.getX()+10,kitList.getY()+37,kitList.getWidth()-20,kitList.getHeight()-147);
+    newKitButton.setBounds(kitList.getX()+10,kitList.getBottom()-100,118,28);
+    saveKitButton.setBounds(kitList.getX()+137,kitList.getBottom()-100,118,28);
+    loadKitButton.setBounds(kitList.getX()+10,kitList.getBottom()-63,118,28);
+    importButton.setBounds(kitList.getX()+137,kitList.getBottom()-63,118,28);
 
-    // The reference puts the full-width effect strip under the pads.
-    auto effectsWide = juce::Rectangle<int>(body.getX() - centerW - 10 - leftW, center.getBottom() - 150, leftW + 10 + centerW, 150);
-    drawBevel(g, effectsWide); drawSectionTitle(g, effectsWide, "GLOBAL EFFECTS");
-    const int gw = effectsWide.getWidth() / 13;
-    for (int i = 0; i < 13; ++i)
+    // === GLOBAL EFFECTS ===
+    auto effectsWide = juce::Rectangle<int>(left.getX(), center.getBottom()-147, leftW+10+centerW, 147);
+    drawBevel(g,effectsWide); drawSectionTitle(g,effectsWide,"GLOBAL EFFECTS");
+    const int gw = effectsWide.getWidth()/13;
+    for (int i=0;i<13;++i)
     {
-        const int x = effectsWide.getX() + i * gw;
-        globalKnobLabels[(size_t)i].setBounds(x + 2, effectsWide.getY() + 30, gw - 4, 24);
-        globalKnobs[(size_t)i].setBounds(x + 3, effectsWide.getY() + 51, gw - 6, 82);
+        const int x=effectsWide.getX()+i*gw;
+        globalKnobLabels[(size_t)i].setBounds(x+1,effectsWide.getY()+29,gw-2,18);
+        globalKnobs[(size_t)i].setBounds(x+2,effectsWide.getY()+45,gw-4,80);
     }
 
+    // === MIDI ===
     auto midi = left.removeFromTop(std::max(120, left.getHeight()));
-    drawBevel(g, midi); drawSectionTitle(g, midi, "MIDI");
-    midiMapBox.setBounds(midi.getX()+12,midi.getY()+38,midi.getWidth()-24,30);
-    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f).withStyle("Bold")));
-    g.drawText("VELOCITY", midi.getX()+12, midi.getY()+78, 70, 16, juce::Justification::left);
-    velocitySlider.setBounds(midi.getRight()-100,midi.getY()+55,80,70);
-    volumeSlider.setBounds(midi.getX()+12,midi.getY()+112,1,1);
-    ceilingSlider.setBounds(midi.getX()+12,midi.getY()+112,1,1);
+    drawBevel(g,midi); drawSectionTitle(g,midi,"MIDI");
+    midiMapBox.setBounds(midi.getX()+10,midi.getY()+37,midi.getWidth()-20,28);
+    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.drawText("VELOCITY", midi.getX()+10,midi.getY()+76,70,14,juce::Justification::left);
+    velocitySlider.setBounds(midi.getRight()-94,midi.getY()+51,78,68);
+    volumeSlider.setBounds(midi.getX()+10,midi.getY()+108,1,1);
 
-    // Right sample panel
-    auto sample=right.removeFromTop(420); drawBevel(g,sample,true); drawSectionTitle(g,sample,"SAMPLE");
-    sampleName.setBounds(sample.getX()+14,sample.getY()+36,sample.getWidth()-120,24);
-    sampleInfo.setBounds(sample.getX()+14,sample.getY()+61,sample.getWidth()-120,20);
-    loadSampleButton.setBounds(sample.getRight()-96,sample.getY()+36,82,30);
-    clearSampleButton.setBounds(sample.getRight()-96,sample.getY()+72,82,30);
-    auto wave=sample.reduced(14); wave.removeFromTop(95); wave.removeFromBottom(112);
-    g.setColour(black); g.fillRect(wave);
+    // === SAMPLE ===
+    auto sample=right.removeFromTop(402);
+    drawBevel(g,sample,true); drawSectionTitle(g,sample,"SAMPLE");
+    sampleName.setBounds(sample.getX()+12,sample.getY()+35,sample.getWidth()-112,21);
+    sampleInfo.setBounds(sample.getX()+12,sample.getY()+57,sample.getWidth()-112,18);
+    loadSampleButton.setBounds(sample.getRight()-91,sample.getY()+34,78,28);
+    clearSampleButton.setBounds(sample.getRight()-91,sample.getY()+68,78,28);
+
+    auto wave=sample.reduced(12); wave.removeFromTop(86); wave.removeFromBottom(105);
+    g.setColour(panelBlack); g.fillRect(wave);
+    g.setColour(juce::Colour(0xff16341b));
+    for(int yy=wave.getY()+10;yy<wave.getBottom();yy+=10) g.drawHorizontalLine(yy,(float)wave.getX(),(float)wave.getRight());
+    g.setColour(juce::Colour(0xff39503f));
+    g.drawLine((float)wave.getX(),(float)wave.getCentreY(),(float)wave.getRight(),(float)wave.getCentreY(),1.0f);
     if(auto* s=processor.pads[(size_t)selectedPad].sample.get())
     {
         const auto* data=s->getReadPointer(0); const int n=s->getNumSamples();
         juce::Path pth;
-        for(int x=0;x<wave.getWidth();++x){int idx=juce::jlimit(0,n-1,(int)((double)x/wave.getWidth()*n)); float yy=wave.getCentreY()-data[idx]*wave.getHeight()*0.45f; if(x==0) pth.startNewSubPath((float)wave.getX()+x,yy); else pth.lineTo((float)wave.getX()+x,yy);}
-        g.setColour(green); g.strokePath(pth,juce::PathStrokeType(1.2f));
+        for(int x=0;x<wave.getWidth();++x)
+        {
+            int idx=juce::jlimit(0,n-1,(int)((double)x/(double)wave.getWidth()*n));
+            float yy=wave.getCentreY()-data[idx]*wave.getHeight()*0.42f;
+            if(x==0) pth.startNewSubPath((float)wave.getX()+x,yy); else pth.lineTo((float)wave.getX()+x,yy);
+        }
+        g.setColour(green); g.strokePath(pth,juce::PathStrokeType(1.1f));
     }
     for(int i=0;i<4;++i)
     {
-        const int x=sample.getX()+10+i*(sample.getWidth()-20)/4;
-        sampleKnobLabels[(size_t)i].setBounds(x,sample.getBottom()-98,(sample.getWidth()-20)/4-6,18);
-        sampleKnobs[(size_t)i].setBounds(x,sample.getBottom()-80,(sample.getWidth()-20)/4-6,76);
+        const int x=sample.getX()+8+i*(sample.getWidth()-16)/4;
+        sampleKnobLabels[(size_t)i].setBounds(x,sample.getBottom()-91,(sample.getWidth()-16)/4-4,17);
+        sampleKnobs[(size_t)i].setBounds(x,sample.getBottom()-75,(sample.getWidth()-16)/4-4,70);
     }
 
-    // Right output meters / limiter
-    auto out=right; drawBevel(g,out); drawSectionTitle(g,out,"OUTPUT");
+    // === OUTPUT ===
+    auto out=right;
+    drawBevel(g,out); drawSectionTitle(g,out,"OUTPUT");
     const float l=juce::jlimit(0.0f,1.0f,processor.getLeftPeak());
-    const float r=juce::jlimit(0.0f,1.0f,processor.getRightPeak());
-    auto meterL=juce::Rectangle<int>(out.getX()+18,out.getY()+48,42,out.getHeight()-76);
-    auto meterR=juce::Rectangle<int>(out.getX()+68,out.getY()+48,42,out.getHeight()-76);
-    for(auto mr:{meterL,meterR}) { g.setColour(black); g.fillRect(mr); g.setColour(edge); g.drawRect(mr,1); }
+    const float rr=juce::jlimit(0.0f,1.0f,processor.getRightPeak());
+    auto meterL=juce::Rectangle<int>(out.getX()+15,out.getY()+47,34,out.getHeight()-73);
+    auto meterR=juce::Rectangle<int>(out.getX()+56,out.getY()+47,34,out.getHeight()-73);
+    for(auto mr:{meterL,meterR})
+    {
+        g.setColour(black); g.fillRect(mr);
+        g.setColour(shellEdge); g.drawRect(mr.toFloat(),1.0f);
+        for(int sy=mr.getY()+4;sy<mr.getBottom();sy+=8){g.setColour(juce::Colour(0xff172229));g.drawHorizontalLine(sy,(float)mr.getX()+1,(float)mr.getRight()-1);}
+    }
     g.setColour(green); g.fillRect(meterL.withTop(meterL.getBottom()-(int)(meterL.getHeight()*l)));
-    g.setColour(green); g.fillRect(meterR.withTop(meterR.getBottom()-(int)(meterR.getHeight()*r)));
-    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withStyle("Bold")));
-    g.drawText("L",meterL.getX(),meterL.getBottom()+6,meterL.getWidth(),14,juce::Justification::centred);
-    g.drawText("R",meterR.getX(),meterR.getBottom()+6,meterR.getWidth(),14,juce::Justification::centred);
-    limiterButton.setBounds(out.getRight()-92,out.getY()+48,72,30);
-    ceilingSlider.setBounds(out.getRight()-102,out.getY()+90,92,78);
-    g.drawText("LIMITER",out.getRight()-102,out.getY()+170,92,16,juce::Justification::centred);
+    g.setColour(green); g.fillRect(meterR.withTop(meterR.getBottom()-(int)(meterR.getHeight()*rr)));
+    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.drawText("L",meterL.getX(),meterL.getBottom()+5,meterL.getWidth(),13,juce::Justification::centred);
+    g.drawText("R",meterR.getX(),meterR.getBottom()+5,meterR.getWidth(),13,juce::Justification::centred);
+    limiterButton.setBounds(out.getRight()-82,out.getY()+47,68,28);
+    ceilingSlider.setBounds(out.getRight()-90,out.getY()+84,80,68);
+    g.drawText("LIMITER",out.getRight()-91,out.getY()+153,82,14,juce::Justification::centred);
+
+    // Footer status bar.
+    auto footer = juce::Rectangle<int>(outer.getX()+1, outer.getBottom()-25, outer.getWidth()-2, 18);
+    g.setColour(juce::Colour(0xff0a1116)); g.fillRect(footer);
+    g.setColour(shellEdge); g.drawRect(footer.toFloat(),1.0f);
+    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.drawText("PHYSICAL DRUM ENGINE v1.8", footer.getX()+7, footer.getY()+2, 240, 13, juce::Justification::left);
+    g.setColour(muted);
+    g.drawText("WINAMP SKIN // AUDIO READY", footer.getRight()-220, footer.getY()+2, 210, 13, juce::Justification::right);
 }
 
 void PhysicalDrumEngineAudioProcessorEditor::drawPanel(juce::Graphics& g, juce::Rectangle<int> r, const juce::String& titleText)
