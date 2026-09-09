@@ -14,7 +14,7 @@ juce::String valueForParameter(const juce::AudioProcessorValueTreeState& state, 
     if (auto* p = state.getParameter(id))
     {
         if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(p))
-            return ranged->getNormalisableRange().convertFrom0to1(p->getValue());
+            return juce::String(ranged->getNormalisableRange().convertFrom0to1(p->getValue()), 3);
     }
     return {};
 }
