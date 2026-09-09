@@ -1,5 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <cstdint>
+#include <cstring>
 
 namespace
 {
@@ -9,6 +11,65 @@ float param(const juce::AudioProcessorValueTreeState& s, const char* id)
 {
     if (auto* p = s.getRawParameterValue(id)) return p->load();
     return 0.0f;
+}
+
+bool encodePadSample(const PhysicalDrumEngineAudioProcessor::Pad& pad, juce::String& encoded)
+{
+    if (!pad.sample || pad.sample->getNumChannels() <= 0 || pad.sample->getNumSamples() <= 0)
+        return false;
+
+    const int channels = pad.sample->getNumChannels();
+    const int samples = pad.sample->getNumSamples();
+    const double sampleRate = pad.sampleRate;
+
+    juce::MemoryBlock raw;
+    raw.append(&channels, sizeof(channels));
+    raw.append(&samples, sizeof(samples));
+    raw.append(&sampleRate, sizeof(sampleRate));
+
+    for (int channel = 0; channel < channels; ++channel)
+        raw.append(pad.sample->getReadPointer(channel), (size_t) samples * sizeof(float));
+
+    encoded = raw.toBase64Encoding();
+    return !encoded.isEmpty();
+}
+
+bool decodePadSample(PhysicalDrumEngineAudioProcessor::Pad& pad, const juce::String& encoded)
+{
+    if (encoded.isEmpty()) return false;
+
+    juce::MemoryBlock raw;
+    if (!raw.fromBase64Encoding(encoded)) return false;
+
+    const size_t headerSize = sizeof(int) + sizeof(int) + sizeof(double);
+    if (raw.getSize() < headerSize) return false;
+
+    const auto* bytes = static_cast<const std::uint8_t*>(raw.getData());
+    int channels = 0;
+    int samples = 0;
+    double sampleRate = 44100.0;
+    std::memcpy(&channels, bytes, sizeof(channels));
+    bytes += sizeof(channels);
+    std::memcpy(&samples, bytes, sizeof(samples));
+    bytes += sizeof(samples);
+    std::memcpy(&sampleRate, bytes, sizeof(sampleRate));
+    bytes += sizeof(sampleRate);
+
+    if (channels < 1 || channels > 32 || samples < 1 || samples > 100000000) return false;
+
+    const size_t audioBytes = (size_t) channels * (size_t) samples * sizeof(float);
+    if (raw.getSize() - headerSize != audioBytes) return false;
+
+    auto audio = std::make_unique<juce::AudioBuffer<float>>(channels, samples);
+    for (int channel = 0; channel < channels; ++channel)
+    {
+        std::memcpy(audio->getWritePointer(channel), bytes, (size_t) samples * sizeof(float));
+        bytes += (size_t) samples * sizeof(float);
+    }
+
+    pad.sample = std::move(audio);
+    pad.sampleRate = sampleRate > 0.0 ? sampleRate : 44100.0;
+    return true;
 }
 }
 
@@ -118,7 +179,7 @@ void PhysicalDrumEngineAudioProcessor::triggerPad(int padIndex, float velocity)
     const float sustainFromVelocity = 0.34f + 0.66f * std::pow(vel, 0.72f);
     const float sustainFromDecay = 0.55f + 0.55f * decay;
     const float sustainVariation = 1.0f + randomIdentity * 0.10f;
-    voice->maxProgress = juce::jlimit(0.22f, 1.0f, sustainFromVelocity * sustainFromDecay * sustainVariation);
+    voice->maxProgress = juce::jlimit(0.22f, 1.0f, sustainFromVelocity * sustainFromDecay * sustainVariation + 0.22f * param(apvts, "release"));
 
     const float velocityDurationRate = 1.18f - 0.46f * vel;
     const float pitchFromVelocity = (vel - 0.5f) * 110.0f * pitch * (0.45f + 0.90f * phy);
@@ -208,7 +269,9 @@ void PhysicalDrumEngineAudioProcessor::renderVoice(Voice& v, juce::AudioBuffer<f
         const float spectral = v.lowpassState + v.brightnessAmount * (raw - v.lowpassState);
         const float releaseEnv = v.sustain >= 0.999f ? 1.0f : (v.sustain + (1.0f - v.sustain) * std::max(0.0f, 1.0f - normalizedLife));
         const float env = attackEnv * tailShape * releaseEnv;
-        const float out = spectral * v.gain * velocityTransient * velocityBody * env * mix;
+        const float dryOut = raw * v.gain * env;
+        const float processedOut = spectral * v.gain * velocityTransient * velocityBody * env;
+        const float out = dryOut + (processedOut - dryOut) * mix;
         buffer.addSample(0, startSample + i, out);
         if (buffer.getNumChannels() > 1) buffer.addSample(1, startSample + i, out);
         v.sampleRatePhase -= 1.0;
@@ -345,7 +408,7 @@ bool PhysicalDrumEngineAudioProcessor::saveKit(const juce::File& file)
 {
     if (file == juce::File()) return false;
     auto root = std::make_unique<juce::XmlElement>("PHYSICAL_DRUM_KIT");
-    root->setAttribute("version", "1.8");
+    root->setAttribute("version", "1.9");
     if (auto params = apvts.copyState().createXml()) root->addChildElement(params.release());
     for (int i = 0; i < numPads; ++i)
     {
@@ -355,6 +418,15 @@ bool PhysicalDrumEngineAudioProcessor::saveKit(const juce::File& file)
         node->setAttribute("name", pad.name);
         node->setAttribute("note", pad.midiNote);
         node->setAttribute("file", pad.sampleFile.getFullPathName());
+        node->setAttribute("sampleRate", pad.sampleRate);
+        if (i == 1 && pad.sample && !pad.sampleFile.existsAsFile())
+            node->setAttribute("factory", "snare");
+        juce::String encodedSample;
+        if (encodePadSample(pad, encodedSample))
+        {
+            auto* sampleNode = node->createNewChildElement("SAMPLE_DATA");
+            sampleNode->addTextElement(encodedSample);
+        }
         node->setAttribute("trim", pad.trim);
         node->setAttribute("tuneCents", pad.tuneCents);
         node->setAttribute("start", pad.startNorm);
@@ -379,6 +451,8 @@ bool PhysicalDrumEngineAudioProcessor::loadKit(const juce::File& file)
         const int index = node->getIntAttribute("index", -1);
         if (index < 0 || index >= numPads) continue;
         auto& pad = pads[index];
+        pad.name = node->getStringAttribute("name", pad.name);
+        pad.midiNote = node->getIntAttribute("note", pad.midiNote);
         pad.trim = (float) node->getDoubleAttribute("trim", 1.0);
         pad.tuneCents = (float) node->getDoubleAttribute("tuneCents", 0.0);
         pad.startNorm = juce::jlimit(0.0f, 1.0f, (float) node->getDoubleAttribute("start", 0.0));
@@ -387,20 +461,109 @@ bool PhysicalDrumEngineAudioProcessor::loadKit(const juce::File& file)
         const juce::File sample(node->getStringAttribute("file"));
         pad.sample.reset();
         pad.sampleFile = juce::File();
-        if (sample.existsAsFile()) loadSampleForPad(index, sample);
+        bool restoredEmbedded = false;
+        if (auto* sampleNode = node->getChildByName("SAMPLE_DATA"))
+            restoredEmbedded = decodePadSample(pad, sampleNode->getAllSubText());
+
+        if (restoredEmbedded)
+        {
+            pad.sampleFile = sample;
+        }
+        else if (sample.existsAsFile())
+            loadSampleForPad(index, sample);
+        else if (node->getStringAttribute("factory") == "snare")
+        {
+            if (index == 1) loadFactorySnare();
+        }
     }
     return true;
 }
 
 void PhysicalDrumEngineAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml()) copyXmlToBinary(*xml, destData);
+    auto root = std::make_unique<juce::XmlElement>("PHYSICAL_DRUM_STATE");
+    root->setAttribute("version", "1.9.1");
+
+    if (auto params = apvts.copyState().createXml())
+        root->addChildElement(params.release());
+
+    for (int i = 0; i < numPads; ++i)
+    {
+        const auto& pad = pads[i];
+        auto* node = root->createNewChildElement("PAD");
+        node->setAttribute("index", i);
+        node->setAttribute("name", pad.name);
+        node->setAttribute("note", pad.midiNote);
+        node->setAttribute("file", pad.sampleFile.getFullPathName());
+        node->setAttribute("sampleRate", pad.sampleRate);
+        node->setAttribute("trim", pad.trim);
+        node->setAttribute("tuneCents", pad.tuneCents);
+        node->setAttribute("start", pad.startNorm);
+        node->setAttribute("end", pad.endNorm);
+        node->setAttribute("level", pad.level);
+
+        if (i == 1 && pad.sample && !pad.sampleFile.existsAsFile())
+            node->setAttribute("factory", "snare");
+
+        juce::String encodedSample;
+        if (encodePadSample(pad, encodedSample))
+        {
+            auto* sampleNode = node->createNewChildElement("SAMPLE_DATA");
+            sampleNode->addTextElement(encodedSample);
+        }
+    }
+
+    copyXmlToBinary(*root, destData);
 }
 
 void PhysicalDrumEngineAudioProcessor::setStateInformation(const void* data, int size)
 {
     if (auto xml = getXmlFromBinary(data, size))
-        if (xml->hasTagName(apvts.state.getType())) apvts.replaceState(juce::ValueTree::fromXml(*xml));
+    {
+        if (xml->hasTagName("PHYSICAL_DRUM_STATE"))
+        {
+            if (auto* params = xml->getChildByName("PARAMETERS"))
+                apvts.replaceState(juce::ValueTree::fromXml(*params));
+
+            stopAllVoices();
+            for (auto* node : xml->getChildIterator())
+            {
+                if (!node->hasTagName("PAD")) continue;
+                const int index = node->getIntAttribute("index", -1);
+                if (index < 0 || index >= numPads) continue;
+
+                auto& pad = pads[index];
+                pad.name = node->getStringAttribute("name", pad.name);
+                pad.midiNote = node->getIntAttribute("note", pad.midiNote);
+                pad.trim = (float) node->getDoubleAttribute("trim", 1.0);
+                pad.tuneCents = (float) node->getDoubleAttribute("tuneCents", 0.0);
+                pad.startNorm = juce::jlimit(0.0f, 1.0f, (float) node->getDoubleAttribute("start", 0.0));
+                pad.endNorm = juce::jlimit(pad.startNorm + 0.001f, 1.0f, (float) node->getDoubleAttribute("end", 1.0));
+                pad.level = juce::jlimit(0.0f, 2.0f, (float) node->getDoubleAttribute("level", 1.0));
+                pad.sample.reset();
+                pad.sampleFile = juce::File(node->getStringAttribute("file"));
+                pad.sampleRate = node->getDoubleAttribute("sampleRate", 44100.0);
+
+                bool restoredEmbedded = false;
+                if (auto* sampleNode = node->getChildByName("SAMPLE_DATA"))
+                    restoredEmbedded = decodePadSample(pad, sampleNode->getAllSubText());
+
+                if (!restoredEmbedded)
+                {
+                    const auto sample = pad.sampleFile;
+                    if (sample.existsAsFile())
+                        loadSampleForPad(index, sample);
+                    else if (node->getStringAttribute("factory") == "snare" && index == 1)
+                        loadFactorySnare();
+                }
+            }
+        }
+        else if (xml->hasTagName(apvts.state.getType()))
+        {
+            // Backward compatibility with V1.8 states that only stored APVTS parameters.
+            apvts.replaceState(juce::ValueTree::fromXml(*xml));
+        }
+    }
 }
 
 juce::AudioProcessorEditor* PhysicalDrumEngineAudioProcessor::createEditor()
