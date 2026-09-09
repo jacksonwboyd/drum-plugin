@@ -59,19 +59,11 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
 
     setupButton(newKitButton, "New Kit", [this]
     {
-        if (juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::WarningIcon,
-                                                "New Kit",
-                                                "Clear the current kit and start fresh?",
-                                                "OK",
-                                                "Cancel",
-                                                nullptr,
-                                                nullptr))
-        {
-            processor.newKit();
-            selectPad(0);
-            lcdStatus.setText("NEW KIT CREATED", juce::dontSendNotification);
-            refreshPadText();
-        }
+        processor.newKit();
+        selectPad(0);
+        lcdStatus.setText("NEW KIT CREATED", juce::dontSendNotification);
+        refreshPadText();
+        refreshSelectedPadControls();
     });
     setupButton(saveKitButton, "Save Kit", [this] { saveKitToChooser(); });
     setupButton(loadKitButton, "Load Kit", [this] { loadKitFromChooser(); });
