@@ -177,7 +177,7 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
     setResizable(false, false);
     setLookAndFeel(&winampLaf);
 
-    windowTitle.setText("Physical Drum Engine v1.8", juce::dontSendNotification);
+    windowTitle.setText("Physical Drum Engine v2.1", juce::dontSendNotification);
     windowTitle.setVisible(false);
     addAndMakeVisible(windowTitle);
 
@@ -192,7 +192,7 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
     marquee.setColour(juce::Label::textColourId, green);
     addAndMakeVisible(marquee);
 
-    lcdTitle.setText("PHYSICAL DRUM ENGINE v1.8", juce::dontSendNotification);
+    lcdTitle.setText("PHYSICAL DRUM ENGINE v2.1", juce::dontSendNotification);
     lcdTitle.setFont(juce::Font(juce::FontOptions{}.withHeight(24.0f).withStyle("Bold")));
     lcdTitle.setColour(juce::Label::textColourId, green);
     addAndMakeVisible(lcdTitle);
@@ -260,8 +260,8 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
     sampleKnobs[3].setRange(0.0, 2.0, 0.001);
     sampleKnobs[3].onValueChange = [this] { processor.pads[(size_t)selectedPad].level = (float)sampleKnobs[3].getValue(); };
 
-    const std::array<const char*, 13> names = {"PHYSICALITY", "TRANSIENT", "ATTACK", "BRIGHTNESS", "PITCH", "BODY", "DECAY", "TIMING", "VARIATION", "SAMPLE RATE", "SUSTAIN", "RELEASE", "MIX"};
-    for (int i = 0; i < 13; ++i)
+    const std::array<const char*, 5> names = {"SAMPLE RATE", "OUTPUT", "FILTER", "ATTACK", "RELEASE"};
+    for (int i = 0; i < 5; ++i)
         setupKnob(globalKnobs[(size_t)i], globalKnobLabels[(size_t)i], globalKnobIds[(size_t)i], names[(size_t)i]);
 
     velocitySlider.setLookAndFeel(&winampLaf);
@@ -270,24 +270,6 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
     velocitySlider.setRange(0.0, 1.0, 0.001);
     velocitySlider.setValue(1.0);
     addAndMakeVisible(velocitySlider);
-
-    volumeSlider.setLookAndFeel(&winampLaf);
-    volumeSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-    volumeSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 68, 18);
-    volumeSlider.setRange(-18.0, 6.0, 0.1);
-    volumeSlider.setValue(processor.apvts.getRawParameterValue("output")->load());
-    volumeSlider.onValueChange = [this] { if (auto* p = processor.apvts.getParameter("output")) if (auto* r = dynamic_cast<juce::RangedAudioParameter*>(p)) r->setValueNotifyingHost(r->getNormalisableRange().convertTo0to1((float)volumeSlider.getValue())); };
-    addAndMakeVisible(volumeSlider);
-
-    ceilingSlider.setLookAndFeel(&winampLaf);
-    ceilingSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-    ceilingSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 68, 18);
-    ceilingSlider.setRange(-12.0, 0.0, 0.1);
-    ceilingSlider.setValue(processor.apvts.getRawParameterValue("ceiling")->load());
-    ceilingSlider.onValueChange = [this] { if (auto* p = processor.apvts.getParameter("ceiling")) if (auto* r = dynamic_cast<juce::RangedAudioParameter*>(p)) r->setValueNotifyingHost(r->getNormalisableRange().convertTo0to1((float)ceilingSlider.getValue())); };
-    addAndMakeVisible(ceilingSlider);
-
-    setupButton(limiterButton, "ON", [this] { setLimiter(!limiterOn); });
 
     presetBrowser.addItem("Init", 1);
     presetBrowser.addItem("Lo Fi Kit", 2);
@@ -318,8 +300,6 @@ PhysicalDrumEngineAudioProcessorEditor::~PhysicalDrumEngineAudioProcessorEditor(
     for (auto& s : sampleKnobs) s.setLookAndFeel(nullptr);
     for (auto& s : globalKnobs) s.setLookAndFeel(nullptr);
     velocitySlider.setLookAndFeel(nullptr);
-    volumeSlider.setLookAndFeel(nullptr);
-    ceilingSlider.setLookAndFeel(nullptr);
 }
 
 void PhysicalDrumEngineAudioProcessorEditor::setupButton(juce::TextButton& button, const juce::String& textValue, std::function<void()> action)
@@ -441,21 +421,21 @@ void PhysicalDrumEngineAudioProcessorEditor::importKit() { loadKitFromChooser();
 
 void PhysicalDrumEngineAudioProcessorEditor::applyPreset(int index)
 {
-    const std::array<float, 13> values = [&]()
+    const std::array<float, 5> values = [&]()
     {
         switch (index)
         {
-            case 2: return std::array<float, 13>{0.90f,0.55f,0.25f,0.35f,0.45f,1.05f,0.70f,0.35f,0.45f,18000.0f,0.95f,0.18f,1.0f};
-            case 3: return std::array<float, 13>{0.95f,0.85f,0.20f,0.20f,0.65f,1.10f,0.65f,0.40f,0.70f,8000.0f,0.90f,0.30f,1.0f};
-            case 4: return std::array<float, 13>{0.75f,0.60f,0.25f,0.45f,0.35f,1.00f,0.55f,0.25f,0.35f,22000.0f,1.0f,0.15f,0.95f};
-            case 5: return std::array<float, 13>{1.00f,0.80f,0.15f,0.30f,0.55f,1.20f,0.80f,0.30f,0.55f,12000.0f,0.95f,0.35f,1.0f};
-            case 6: return std::array<float, 13>{0.70f,0.90f,0.15f,0.65f,0.50f,0.95f,0.50f,0.20f,0.25f,30000.0f,1.0f,0.10f,1.0f};
-            case 7: return std::array<float, 13>{0.65f,0.80f,0.20f,0.50f,0.35f,1.00f,0.40f,0.10f,0.20f,6000.0f,0.88f,0.28f,0.90f};
-            case 8: return std::array<float, 13>{1.00f,1.00f,0.10f,0.15f,0.80f,1.30f,0.90f,0.45f,0.80f,3500.0f,0.82f,0.40f,1.0f};
-            default: return std::array<float, 13>{0.75f,0.70f,0.35f,0.55f,0.35f,1.00f,0.55f,0.20f,0.30f,44100.0f,1.0f,0.15f,1.0f};
+            case 2: return std::array<float, 5>{22050.0f, -1.0f, 12000.0f, 0.00f, 0.18f};
+            case 3: return std::array<float, 5>{11025.0f, -2.0f, 8000.0f, 0.02f, 0.30f};
+            case 4: return std::array<float, 5>{44100.0f, 0.0f, 16000.0f, 0.00f, 0.08f};
+            case 5: return std::array<float, 5>{16000.0f, -1.5f, 10000.0f, 0.01f, 0.25f};
+            case 6: return std::array<float, 5>{30000.0f, 0.0f, 18000.0f, 0.00f, 0.05f};
+            case 7: return std::array<float, 5>{8000.0f, -3.0f, 6500.0f, 0.01f, 0.22f};
+            case 8: return std::array<float, 5>{3500.0f, -2.5f, 4500.0f, 0.03f, 0.35f};
+            default: return std::array<float, 5>{44100.0f, 0.0f, 20000.0f, 0.0f, 0.0f};
         }
     }();
-    for (int i = 0; i < 13; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         if (auto* p = processor.apvts.getParameter(globalKnobIds[(size_t)i]))
             if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(p))
@@ -476,25 +456,9 @@ void PhysicalDrumEngineAudioProcessorEditor::applyMidiMap(int index)
     lcdStatus.setText("MIDI MAP: " + midiMapBox.getText(), juce::dontSendNotification);
 }
 
-void PhysicalDrumEngineAudioProcessorEditor::setLimiter(bool enabled)
-{
-    limiterOn = enabled;
-    if (auto* p = processor.apvts.getParameter("limiter")) p->setValueNotifyingHost(enabled ? 1.0f : 0.0f);
-    limiterButton.setButtonText(enabled ? "ON" : "OFF");
-    lcdStatus.setText(enabled ? "LIMITER ENABLED" : "LIMITER BYPASSED", juce::dontSendNotification);
-}
 
 void PhysicalDrumEngineAudioProcessorEditor::timerCallback()
 {
-    if (auto* p = processor.apvts.getRawParameterValue("limiter"))
-    {
-        const bool enabled = p->load() >= 0.5f;
-        if (enabled != limiterOn)
-        {
-            limiterOn = enabled;
-            limiterButton.setButtonText(enabled ? "ON" : "OFF");
-        }
-    }
     repaint();
     refreshPadText();
     refreshSelectedPadControls();
@@ -638,8 +602,8 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     // === GLOBAL EFFECTS ===
     auto effectsWide = juce::Rectangle<int>(left.getX(), center.getBottom()-147, leftW+10+centerW, 147);
     drawBevel(g,effectsWide); drawSectionTitle(g,effectsWide,"GLOBAL EFFECTS");
-    const int gw = effectsWide.getWidth()/13;
-    for (int i=0;i<13;++i)
+    const int gw = effectsWide.getWidth()/5;
+    for (int i=0;i<5;++i)
     {
         const int x=effectsWide.getX()+i*gw;
         globalKnobLabels[(size_t)i].setBounds(x+1,effectsWide.getY()+29,gw-2,18);
@@ -653,7 +617,6 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText("VELOCITY", midi.getX()+10,midi.getY()+76,70,14,juce::Justification::left);
     velocitySlider.setBounds(midi.getRight()-94,midi.getY()+51,78,68);
-    volumeSlider.setBounds(midi.getX()+10,midi.getY()+108,1,1);
 
     // === SAMPLE ===
     auto sample=right.removeFromTop(402);
@@ -706,16 +669,13 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText("L",meterL.getX(),meterL.getBottom()+5,meterL.getWidth(),13,juce::Justification::centred);
     g.drawText("R",meterR.getX(),meterR.getBottom()+5,meterR.getWidth(),13,juce::Justification::centred);
-    limiterButton.setBounds(out.getRight()-82,out.getY()+47,68,28);
-    ceilingSlider.setBounds(out.getRight()-90,out.getY()+84,80,68);
-    g.drawText("LIMITER",out.getRight()-91,out.getY()+153,82,14,juce::Justification::centred);
 
     // Footer status bar.
     auto footer = juce::Rectangle<int>(outer.getX()+1, outer.getBottom()-25, outer.getWidth()-2, 18);
     g.setColour(juce::Colour(0xff0a1116)); g.fillRect(footer);
     g.setColour(shellEdge); g.drawRect(footer.toFloat(),1.0f);
     g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
-    g.drawText("PHYSICAL DRUM ENGINE v1.8", footer.getX()+7, footer.getY()+2, 240, 13, juce::Justification::left);
+    g.drawText("PHYSICAL DRUM ENGINE v2.1", footer.getX()+7, footer.getY()+2, 240, 13, juce::Justification::left);
     g.setColour(muted);
     g.drawText("WINAMP SKIN // AUDIO READY", footer.getRight()-220, footer.getY()+2, 210, 13, juce::Justification::right);
 }
