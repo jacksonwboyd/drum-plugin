@@ -36,7 +36,7 @@ public:
 
     static juce::Font pixelFont(float height, bool bold = false)
     {
-        auto options = juce::FontOptions{}.withHeight(height).withTypefaceName("DejaVu Sans Mono");
+        auto options = juce::FontOptions{}.withHeight(height).withName("DejaVu Sans Mono");
         if (bold) options = options.withStyle("Bold");
         return juce::Font(options);
     }
@@ -157,7 +157,7 @@ void drawSectionTitle(juce::Graphics& g, juce::Rectangle<int> r, const juce::Str
     g.setColour(shellEdge);
     g.drawLine((float)r.getX() + 5.0f, (float)r.getY() + 28.0f, (float)r.getRight() - 5.0f, (float)r.getY() + 28.0f, 1.0f);
     g.setColour(text);
-    g.setFont(juce::Font(juce::FontOptions{}.withHeight(12.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(12.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText(title.toUpperCase(), r.getX() + 9, r.getY() + 5, r.getWidth() - 18, 18, juce::Justification::left, false);
 }
 
@@ -498,13 +498,13 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(amber); g.strokePath(bolt, juce::PathStrokeType(1.5f));
 
     g.setColour(text);
-    g.setFont(juce::Font(juce::FontOptions{}.withHeight(21.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(21.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText("WINAMP", header.getX()+57, header.getY()+8, 150, 24, juce::Justification::left);
     g.setColour(green);
-    g.setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText("PHYSICAL DRUM ENGINE", header.getX()+205, header.getY()+10, 280, 18, juce::Justification::left);
     g.drawText("[ DIGITAL AUDIO // 12 PAD ]", header.getX()+205, header.getY()+29, 280, 16, juce::Justification::left);
-    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(11.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText("SAMPLES FEEL BETTER HERE.", header.getRight()-255, header.getY()+13, 235, 18, juce::Justification::right);
 
     // Menu strip (cosmetic only, as in the reference skin).
@@ -512,7 +512,7 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(juce::Colour(0xff0b1116)); g.fillRect(menu);
     g.setColour(shellEdge); g.drawRect(menu.toFloat(), 1.0f);
     g.setColour(text);
-    g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f).withTypefaceName("DejaVu Sans Mono")));
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f).withName("DejaVu Sans Mono")));
     g.drawText("File    Edit    Kits    Options    Help", menu.getX()+10, menu.getY()+5, 270, 15, juce::Justification::left);
     g.setColour(green);
     g.drawText("READY", menu.getRight()-75, menu.getY()+5, 62, 15, juce::Justification::right);
@@ -535,9 +535,9 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(panelBlack); g.fillRect(lcd);
     g.setColour(juce::Colour(0xff0c1a10)); g.drawRect(lcd.toFloat(), 1.0f);
     g.setColour(green);
-    g.setFont(juce::Font(juce::FontOptions{}.withHeight(25.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(25.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText("00:00", lcd.getX()+12, lcd.getY()+8, 115, 29, juce::Justification::left);
-    g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono")));
+    g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withName("DejaVu Sans Mono")));
     g.drawText("TRACK 01", lcd.getX()+13, lcd.getY()+39, 90, 13, juce::Justification::left);
     g.drawText("128 BPM", lcd.getX()+13, lcd.getY()+53, 90, 13, juce::Justification::left);
 
@@ -582,7 +582,7 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
         g.setColour(juce::Colour(0xff344650));
         g.drawLine((float)r.getX()+5.0f,(float)r.getY()+5.0f,(float)r.getRight()-5.0f,(float)r.getY()+5.0f,1.0f);
         g.setColour(green);
-        g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+        g.setFont(juce::Font(juce::FontOptions{}.withHeight(10.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
         g.drawText(juce::String::formatted("%02d", i+1), r.getX()+8, r.getY()+8, 24, 13, juce::Justification::left);
     }
 
@@ -614,7 +614,7 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     auto midi = left.removeFromTop(std::max(120, left.getHeight()));
     drawBevel(g,midi); drawSectionTitle(g,midi,"MIDI");
     midiMapBox.setBounds(midi.getX()+10,midi.getY()+37,midi.getWidth()-20,28);
-    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText("VELOCITY", midi.getX()+10,midi.getY()+76,70,14,juce::Justification::left);
     velocitySlider.setBounds(midi.getRight()-94,midi.getY()+51,78,68);
 
@@ -666,7 +666,7 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     }
     g.setColour(green); g.fillRect(meterL.withTop(meterL.getBottom()-(int)(meterL.getHeight()*l)));
     g.setColour(green); g.fillRect(meterR.withTop(meterR.getBottom()-(int)(meterR.getHeight()*rr)));
-    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.setColour(muted); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText("L",meterL.getX(),meterL.getBottom()+5,meterL.getWidth(),13,juce::Justification::centred);
     g.drawText("R",meterR.getX(),meterR.getBottom()+5,meterR.getWidth(),13,juce::Justification::centred);
 
@@ -674,7 +674,7 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     auto footer = juce::Rectangle<int>(outer.getX()+1, outer.getBottom()-25, outer.getWidth()-2, 18);
     g.setColour(juce::Colour(0xff0a1116)); g.fillRect(footer);
     g.setColour(shellEdge); g.drawRect(footer.toFloat(),1.0f);
-    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withTypefaceName("DejaVu Sans Mono").withStyle("Bold")));
+    g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
     g.drawText("PHYSICAL DRUM ENGINE v2.1", footer.getX()+7, footer.getY()+2, 240, 13, juce::Justification::left);
     g.setColour(muted);
     g.drawText("WINAMP SKIN // AUDIO READY", footer.getRight()-220, footer.getY()+2, 210, 13, juce::Justification::right);
