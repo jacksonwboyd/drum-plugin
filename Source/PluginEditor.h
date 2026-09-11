@@ -34,7 +34,6 @@ private:
     void importKit();
     void applyPreset(int index);
     void applyMidiMap(int index);
-    void setLimiter(bool enabled);
     int padAtPosition(int x, int y) const;
     void updateDragTarget(int x, int y);
     void clearDragTarget();
@@ -71,31 +70,25 @@ private:
     juce::TextButton loadSampleButton { "LOAD" };
     juce::TextButton clearSampleButton { "CLEAR" };
 
-    juce::TextButton limiterButton { "ON" };
     juce::ComboBox presetBrowser;
     juce::ComboBox midiMapBox;
 
-    juce::Slider volumeSlider;
-    juce::Slider ceilingSlider;
     juce::Slider velocitySlider;
     std::array<juce::Slider, 4> sampleKnobs;
     std::array<juce::Label, 4> sampleKnobLabels;
-    std::array<juce::Slider, 13> globalKnobs;
-    std::array<juce::Label, 13> globalKnobLabels;
+    std::array<juce::Slider, 5> globalKnobs;
+    std::array<juce::Label, 5> globalKnobLabels;
 
-    static constexpr std::array<const char*, 13> globalKnobIds = {
-        "physicality", "transient", "attack", "brightness", "pitch", "body",
-        "decay", "timing", "variation", "sampleRate", "sustain", "release", "mix"
+    static constexpr std::array<const char*, 5> globalKnobIds = {
+        "sampleRate", "output", "filter", "attack", "release"
     };
 
-    static constexpr std::array<const char*, 13> globalKnobNames = {
-        "PHYSICALITY", "TRANSIENT", "ATTACK", "BRIGHTNESS", "PITCH", "BODY",
-        "DECAY", "TIMING", "VARIATION", "SAMPLE RATE", "SUSTAIN", "RELEASE", "MIX"
+    static constexpr std::array<const char*, 5> globalKnobNames = {
+        "SAMPLE RATE", "OUTPUT", "FILTER", "ATTACK", "RELEASE"
     };
 
     int selectedPad = 1;
     int dragTargetPad = -1;
-    bool limiterOn = true;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PhysicalDrumEngineAudioProcessorEditor)
