@@ -177,7 +177,7 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
     setResizable(false, false);
     setLookAndFeel(&winampLaf);
 
-    windowTitle.setText("Physical Drum Engine v2.1", juce::dontSendNotification);
+    windowTitle.setText("Physical Drum Engine v2.2", juce::dontSendNotification);
     windowTitle.setVisible(false);
     addAndMakeVisible(windowTitle);
 
@@ -192,7 +192,7 @@ PhysicalDrumEngineAudioProcessorEditor::PhysicalDrumEngineAudioProcessorEditor(P
     marquee.setColour(juce::Label::textColourId, green);
     addAndMakeVisible(marquee);
 
-    lcdTitle.setText("PHYSICAL DRUM ENGINE v2.1", juce::dontSendNotification);
+    lcdTitle.setText("PHYSICAL DRUM ENGINE v2.2", juce::dontSendNotification);
     lcdTitle.setFont(juce::Font(juce::FontOptions{}.withHeight(24.0f).withStyle("Bold")));
     lcdTitle.setColour(juce::Label::textColourId, green);
     addAndMakeVisible(lcdTitle);
@@ -675,7 +675,7 @@ void PhysicalDrumEngineAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(juce::Colour(0xff0a1116)); g.fillRect(footer);
     g.setColour(shellEdge); g.drawRect(footer.toFloat(),1.0f);
     g.setColour(green); g.setFont(juce::Font(juce::FontOptions{}.withHeight(9.0f).withName("DejaVu Sans Mono").withStyle("Bold")));
-    g.drawText("PHYSICAL DRUM ENGINE v2.1", footer.getX()+7, footer.getY()+2, 240, 13, juce::Justification::left);
+    g.drawText("PHYSICAL DRUM ENGINE v2.2", footer.getX()+7, footer.getY()+2, 240, 13, juce::Justification::left);
     g.setColour(muted);
     g.drawText("WINAMP SKIN // AUDIO READY", footer.getRight()-220, footer.getY()+2, 210, 13, juce::Justification::right);
 }
