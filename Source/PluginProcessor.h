@@ -82,6 +82,9 @@ private:
         int age = 0;
         float gainJitter = 1.0f;
         float pitchCents = 0.0f;
+        float variationTransient = 1.0f;
+        float variationDecay = 1.0f;
+        float variationBrightness = 1.0f;
         std::array<float, 2> lowpassState { 0.0f, 0.0f };
         std::array<float, 2> globalFilterState { 0.0f, 0.0f };
         float lowpassCoeff = 1.0f;
