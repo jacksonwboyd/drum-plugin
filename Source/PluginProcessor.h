@@ -78,19 +78,16 @@ private:
         float velocity = 1.0f;
         float gain = 1.0f;
         float attack = 0.0f;
+        float maxProgress = 1.0f;
         int age = 0;
         float gainJitter = 1.0f;
         float pitchCents = 0.0f;
-        float decayScale = 1.0f;
-        float transientBoost = 1.0f;
-        float brightnessAmount = 1.0f;
-        float lowpassState = 0.0f;
+        std::array<float, 2> lowpassState { 0.0f, 0.0f };
+        std::array<float, 2> globalFilterState { 0.0f, 0.0f };
         float lowpassCoeff = 1.0f;
-        float maxProgress = 1.0f;
         double sampleRatePhase = 0.0;
         float heldSample = 0.0f;
         bool hasHeldSample = false;
-        float sustain = 1.0f;
         float releaseSamples = 0.0f;
         juce::Random rng;
     };
@@ -109,7 +106,6 @@ private:
     void renderVoice(Voice& v, juce::AudioBuffer<float>& buffer, int startSample, int numSamples);
     void clearVoices();
     void updateMeters(const juce::AudioBuffer<float>& buffer);
-    void applyLimiter(juce::AudioBuffer<float>& buffer);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PhysicalDrumEngineAudioProcessor)
 };
