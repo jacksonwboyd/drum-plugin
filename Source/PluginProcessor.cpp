@@ -157,43 +157,94 @@ void PhysicalDrumEngineAudioProcessor::triggerPad(int padIndex, float velocity)
     const double maxPosition = std::max(0.0, (double) total - 1.0);
     const double startPosition = (double) pad.startNorm * (double) std::max(1, total - 1);
 
-    // Velocity response is part of the instrument itself. It is never a user
-    // switch and does not depend on the global controls. The imported sample
-    // remains untouched until a hit is triggered; the hit velocity determines
-    // how softly or forcefully that source is excited.
-    //
-    // At maximum velocity the velocity stage is neutral: unity gain, no added
-    // filtering, no attack smoothing and the complete sample is available.
-    // Lower velocities progressively become softer, darker, slower to arrive,
-    // and shorter-lived. This preserves the source sample while making MIDI
-    // velocity behave like playing a physical drum.
+    // VELOCITY IS PERMANENTLY PART OF THE INSTRUMENT.
+    // The WAV itself is never rewritten, normalized, EQ'd or otherwise
+    // destructively processed. Every hit starts from the original sample and
+    // velocity changes how that source is excited.
     const float soft = 1.0f - vel;
-    const float velocityGain = std::pow(std::max(0.001f, vel), 0.82f);
+    const float velocityGain = std::pow(std::max(0.001f, vel), 1.20f);
 
-    // A soft strike has a gentle onset; a hard strike starts immediately.
-    const float attackSeconds = soft * (0.0015f + 0.010f * soft);
+    // Restore the stronger, more organic hit-to-hit variation from the early
+    // engine. This is intentionally correlated: one random fingerprint is
+    // generated for the hit and influences gain, pitch, duration, transient
+    // and brightness together. That feels more like different physical hits
+    // than several unrelated random knobs.
+    const float variationIntensity = 0.70f + 0.30f * (0.35f + 0.65f * soft);
+    auto signedRandom = [&]() { return voice->rng.nextFloat() * 2.0f - 1.0f; };
+    const float identity = signedRandom() * variationIntensity;
 
-    // Soft strikes release earlier, while hard strikes expose the full source.
-    // The lower bound keeps even very quiet MIDI notes recognizably drum-like.
-    const float maxProgress = 0.30f + 0.70f * std::pow(vel, 0.62f);
+    // The old engine's variation was deliberately audible. Keep it dramatic,
+    // but taper it at maximum velocity so a hard hit remains closest to the
+    // original source waveform.
+    const float neutralTaper = 0.30f + 0.70f * soft;
+    const float pitchVariation = identity * (18.0f + 42.0f * neutralTaper);
+    const float pitchFromVelocity = (vel - 0.5f) * 70.0f * soft;
+    const float cents = pitchFromVelocity + pitchVariation * (0.35f + 0.65f * neutralTaper);
+
+    const double pitchRate = std::pow(2.0, cents / 1200.0);
+
+    // Soft hits run through less of the source and arrive more gently. Hard
+    // hits are allowed to use the complete sample and approach unity playback
+    // speed, preserving the imported source at the top of the velocity range.
+    const float sustainVariation = 1.0f + identity * 0.10f * neutralTaper;
+    const float maxProgress = juce::jlimit(0.30f, 1.0f,
+        (0.34f + 0.66f * std::pow(vel, 0.72f)) * sustainVariation);
+
+    const float durationVariation = 1.0f + identity * 0.035f * neutralTaper;
+    const float velocityDurationRate = 1.0f + 0.18f * soft;
 
     voice->active = true;
     voice->pad = padIndex;
     voice->pos = std::clamp(startPosition, 0.0, maxPosition);
-    voice->rate = pad.sampleRate / currentSampleRate;
+    voice->rate = (pad.sampleRate / currentSampleRate)
+        * velocityDurationRate * durationVariation * pitchRate;
     voice->velocity = vel;
-    voice->pitchCents = pad.tuneCents;
-    voice->gain = pad.trim * pad.level * velocityGain;
+    voice->pitchCents = cents;
+
+    // Stronger random level variation, closely matching the earlier engine.
+    // The pad LEVEL knob remains the deterministic per-pad trim.
+    const float gainVariationDb = identity * 2.8f;
+    voice->gainJitter = dbToGain(gainVariationDb);
+    voice->gain = pad.trim * pad.level * velocityGain * voice->gainJitter;
+
+    // Intrinsic velocity attack. Low velocity has a softer onset; hard velocity
+    // is effectively instantaneous. This never depends on a user switch.
+    const float attackSeconds = soft * (0.0015f + 0.010f * soft);
     voice->attack = attackSeconds * (float) currentSampleRate;
-    voice->maxProgress = juce::jlimit(0.30f, 1.0f, maxProgress);
+
+    // These three hit-shape fingerprints recreate the old engine's dramatic
+    // variation without adding any user-facing controls.
+    voice->variationTransient = juce::jlimit(0.65f, 1.35f,
+        1.0f + identity * 0.30f);
+    voice->variationDecay = juce::jlimit(0.88f, 1.14f,
+        1.0f + identity * 0.10f);
+    voice->variationBrightness = juce::jlimit(0.72f, 1.28f,
+        1.0f + identity * 0.28f);
+
+    // Intrinsic velocity brightness. Hard hits are completely open; softer
+    // hits progressively lose top end from the same original source.
+    const float velocityCutoff = 1800.0f + 18200.0f * std::pow(vel, 0.58f);
+    const float variedCutoff = juce::jlimit(900.0f, 20000.0f,
+        velocityCutoff * voice->variationBrightness);
+    voice->lowpassCoeff = vel >= 0.999999f ? 1.0f
+        : 1.0f - std::exp(-2.0f * juce::MathConstants<float>::pi
+            * variedCutoff / (float) currentSampleRate);
+
+    voice->maxProgress = maxProgress;
     voice->age = 0;
     voice->sampleRatePhase = 0.0;
     voice->heldSample = 0.0f;
     voice->hasHeldSample = false;
     voice->lowpassState = { 0.0f, 0.0f };
     voice->globalFilterState = { 0.0f, 0.0f };
-    voice->lowpassCoeff = 1.0f;
-    voice->gainJitter = 1.0f;
+
+    // Tiny physical strike-position/timing variation. This is large enough to
+    // stop repeated hits feeling cloned, but nowhere near enough to become a
+    // rhythmic effect. The same source sample therefore gets a different
+    // microscopic "fingerprint" on every trigger.
+    const double microTimingSamples = (double) (voice->rng.nextFloat() * 2.0f - 1.0f)
+        * (0.0008 + 0.0022 * soft) * currentSampleRate;
+    voice->pos -= microTimingSamples;
 }
 
 void PhysicalDrumEngineAudioProcessor::renderVoice(Voice& v, juce::AudioBuffer<float>& buffer, int startSample, int numSamples)
@@ -240,6 +291,15 @@ void PhysicalDrumEngineAudioProcessor::renderVoice(Voice& v, juce::AudioBuffer<f
 
         const float velocity = v.velocity;
         const float soft = 1.0f - velocity;
+
+        // Correlated per-hit variation: the same fingerprint that changed the
+        // strike's gain/pitch/brightness also changes its transient and tail.
+        // This is what keeps repeated MIDI notes from sounding copy-pasted.
+        const float transientShape = 1.0f + (v.variationTransient - 1.0f)
+            * std::exp(-progress * 105.0f);
+        const float decayShape = std::pow(
+            std::max(0.0f, 1.0f - progress),
+            0.72f * v.variationDecay);
 
         // Direct sample path when all user processing is neutral and the hit is
         // hard enough to be neutral. Otherwise interpolate as needed.
@@ -308,7 +368,8 @@ void PhysicalDrumEngineAudioProcessor::renderVoice(Voice& v, juce::AudioBuffer<f
                 out = v.globalFilterState[stateCh];
             }
 
-            out *= v.gain * velocityAttackEnv * globalAttackEnv * globalReleaseEnv;
+            out *= v.gain * velocityAttackEnv * globalAttackEnv * globalReleaseEnv
+                * transientShape * (0.82f + 0.18f * decayShape);
             buffer.addSample(outCh, startSample + i, out);
         }
 
