@@ -96,22 +96,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout PhysicalDrumEngineAudioProce
         p.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{id, 1}, name,
             juce::NormalisableRange<float>(min, max, 0.001f), def));
     };
-    add("physicality", "Physicality", 0.0f, 1.0f, 0.75f);
-    add("transient", "Transient", 0.0f, 1.0f, 0.70f);
-    add("attack", "Attack", 0.0f, 1.0f, 0.35f);
-    add("brightness", "Brightness", 0.0f, 1.0f, 0.55f);
-    add("pitch", "Pitch Response", 0.0f, 1.0f, 0.35f);
-    add("body", "Body", 0.0f, 1.5f, 1.0f);
-    add("decay", "Decay", 0.0f, 1.0f, 0.55f);
-    add("timing", "Timing", 0.0f, 1.0f, 0.20f);
-    add("variation", "Hit Variation", 0.0f, 1.0f, 0.30f);
-    add("output", "Output dB", -18.0f, 6.0f, 0.0f);
-    add("mix", "Dry/Wet", 0.0f, 1.0f, 1.0f);
+    // Global kit controls. Defaults are intentionally neutral so an imported
+    // sample is reproduced unchanged until the user moves a control.
     add("sampleRate", "Sample Rate", 1000.0f, 44100.0f, 44100.0f);
-    add("sustain", "Sustain", 0.0f, 1.0f, 1.0f);
-    add("release", "Release", 0.0f, 1.0f, 0.15f);
-    p.push_back(std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"limiter", 1}, "Limiter", true));
-    add("ceiling", "Limiter Ceiling", -12.0f, 0.0f, -0.1f);
+    add("output", "Output dB", -60.0f, 6.0f, 0.0f);
+    add("filter", "Filter", 20.0f, 20000.0f, 20000.0f);
+    add("attack", "Attack", 0.0f, 1.0f, 0.0f);
+    add("release", "Release", 0.0f, 1.0f, 0.0f);
     return {p.begin(), p.end()};
 }
 
@@ -160,139 +151,179 @@ void PhysicalDrumEngineAudioProcessor::triggerPad(int padIndex, float velocity)
         if (!candidate.active) { voice = &candidate; break; }
     if (!voice) voice = &voices[0];
 
-    const float phy = clamp01(param(apvts, "physicality"));
-    const float trans = clamp01(param(apvts, "transient"));
-    const float pitch = clamp01(param(apvts, "pitch"));
-    const float variation = clamp01(param(apvts, "variation"));
-    const float timing = clamp01(param(apvts, "timing"));
-    const float brightness = clamp01(param(apvts, "brightness"));
-    const float attack = clamp01(param(apvts, "attack"));
-    const float decay = clamp01(param(apvts, "decay"));
-    const float body = juce::jlimit(0.0f, 1.5f, param(apvts, "body"));
     const float vel = clamp01(velocity);
-    const float velCurve = std::pow(std::max(0.001f, vel), 0.82f);
-    const float physicalAmount = juce::jlimit(0.0f, 1.0f, 0.20f + 0.80f * phy);
-    const float variationAmount = 0.15f + 0.85f * variation;
-    auto signedRandom = [&]() { return voice->rng.nextFloat() * 2.0f - 1.0f; };
-    const float randomIdentity = signedRandom() * variationAmount * physicalAmount;
-
-    const float sustainFromVelocity = 0.34f + 0.66f * std::pow(vel, 0.72f);
-    const float sustainFromDecay = 0.55f + 0.55f * decay;
-    const float sustainVariation = 1.0f + randomIdentity * 0.10f;
-    voice->maxProgress = juce::jlimit(0.22f, 1.0f, sustainFromVelocity * sustainFromDecay * sustainVariation + 0.22f * param(apvts, "release"));
-
-    const float velocityDurationRate = 1.18f - 0.46f * vel;
-    const float pitchFromVelocity = (vel - 0.5f) * 110.0f * pitch * (0.45f + 0.90f * phy);
-    const float randomPitch = signedRandom() * (18.0f + 42.0f * variation) * physicalAmount;
-    const float cents = pitchFromVelocity + randomPitch + pads[padIndex].tuneCents;
-    const double pitchRate = std::pow(2.0, cents / 1200.0);
-
-    voice->active = true;
-    voice->pad = padIndex;
     const auto& pad = pads[padIndex];
     const int total = pad.sample->getNumSamples();
     const double maxPosition = std::max(0.0, (double) total - 1.0);
     const double startPosition = (double) pad.startNorm * (double) std::max(1, total - 1);
+
+    // Velocity response is part of the instrument itself. It is never a user
+    // switch and does not depend on the global controls. The imported sample
+    // remains untouched until a hit is triggered; the hit velocity determines
+    // how softly or forcefully that source is excited.
+    //
+    // At maximum velocity the velocity stage is neutral: unity gain, no added
+    // filtering, no attack smoothing and the complete sample is available.
+    // Lower velocities progressively become softer, darker, slower to arrive,
+    // and shorter-lived. This preserves the source sample while making MIDI
+    // velocity behave like playing a physical drum.
+    const float soft = 1.0f - vel;
+    const float velocityGain = std::pow(std::max(0.001f, vel), 0.82f);
+
+    // A soft strike has a gentle onset; a hard strike starts immediately.
+    const float attackSeconds = soft * (0.0015f + 0.010f * soft);
+
+    // Soft strikes release earlier, while hard strikes expose the full source.
+    // The lower bound keeps even very quiet MIDI notes recognizably drum-like.
+    const float maxProgress = 0.30f + 0.70f * std::pow(vel, 0.62f);
+
+    voice->active = true;
+    voice->pad = padIndex;
     voice->pos = std::clamp(startPosition, 0.0, maxPosition);
-    voice->rate = velocityDurationRate * pitchRate * (pad.sampleRate / currentSampleRate);
+    voice->rate = pad.sampleRate / currentSampleRate;
     voice->velocity = vel;
-    voice->pitchCents = cents;
-    voice->gainJitter = dbToGain(randomIdentity * 2.8f);
-    voice->gain = std::pow(std::max(0.001f, vel), 1.20f)
-        * (0.45f + 1.15f * trans * (0.35f + 0.65f * phy))
-        * voice->gainJitter * pad.trim * pad.level;
-
-    const float attackSeconds = 0.00015f + (1.0f - vel) * (0.002f + 0.022f * attack * (0.45f + 0.85f * phy));
+    voice->pitchCents = pad.tuneCents;
+    voice->gain = pad.trim * pad.level * velocityGain;
     voice->attack = attackSeconds * (float) currentSampleRate;
-    voice->transientBoost = juce::jlimit(0.25f, 2.60f, (0.35f + 2.10f * std::pow(vel, 0.78f)) * (1.0f + randomIdentity * 0.32f));
-    voice->brightnessAmount = juce::jlimit(0.02f, 1.0f, brightness * (0.16f + 0.84f * std::pow(vel, 0.70f)) + randomIdentity * 0.10f);
-
-    const float cutoff = juce::jlimit(900.0f, 19500.0f, 900.0f + voice->brightnessAmount * 18600.0f);
-    voice->lowpassCoeff = 1.0f - std::exp(-2.0f * juce::MathConstants<float>::pi * cutoff / (float) currentSampleRate);
-    voice->lowpassState = 0.0f;
-    voice->decayScale = juce::jlimit(0.30f, 1.70f, 0.55f + 0.95f * vel + 0.28f * decay + randomIdentity * 0.10f);
-    voice->sustain = clamp01(param(apvts, "sustain"));
-    voice->releaseSamples = (0.002f + 0.25f * param(apvts, "release")) * (float) currentSampleRate;
+    voice->maxProgress = juce::jlimit(0.30f, 1.0f, maxProgress);
     voice->age = 0;
     voice->sampleRatePhase = 0.0;
     voice->heldSample = 0.0f;
     voice->hasHeldSample = false;
-
-    if (timing > 0.0f)
-        voice->pos += voice->rng.nextFloat() * timing * physicalAmount * 0.006 * currentSampleRate;
+    voice->lowpassState = { 0.0f, 0.0f };
+    voice->globalFilterState = { 0.0f, 0.0f };
+    voice->lowpassCoeff = 1.0f;
+    voice->gainJitter = 1.0f;
 }
 
 void PhysicalDrumEngineAudioProcessor::renderVoice(Voice& v, juce::AudioBuffer<float>& buffer, int startSample, int numSamples)
 {
     if (!v.active || v.pad < 0 || !pads[v.pad].sample) return;
+
     auto& pad = pads[v.pad];
-    const auto* data = pad.sample->getReadPointer(0);
     const int total = pad.sample->getNumSamples();
-    const float phy = clamp01(param(apvts, "physicality"));
-    const float transient = clamp01(param(apvts, "transient"));
-    const float body = juce::jlimit(0.0f, 1.5f, param(apvts, "body"));
-    const float decay = clamp01(param(apvts, "decay"));
-    const float mix = clamp01(param(apvts, "mix"));
+    const int channels = pad.sample->getNumChannels();
     const int endSample = juce::jlimit(1, total, (int) std::round(pad.endNorm * (double) total));
+
+    const float requestedSampleRate = juce::jlimit(1000.0f, (float) currentSampleRate,
+                                                    param(apvts, "sampleRate"));
+    const double holdInterval = std::max(1.0, currentSampleRate / requestedSampleRate);
+
+    const float filterHz = param(apvts, "filter");
+    const bool globalFilterBypassed = filterHz >= 19999.5f;
+    const float globalFilterCoeff = globalFilterBypassed ? 1.0f
+        : 1.0f - std::exp(-2.0f * juce::MathConstants<float>::pi
+            * juce::jlimit(20.0f, 20000.0f, filterHz) / (float) currentSampleRate);
+
+    const float globalAttack = clamp01(param(apvts, "attack"));
+    const float globalRelease = clamp01(param(apvts, "release"));
 
     for (int i = 0; i < numSamples; ++i)
     {
         if (paused.load()) break;
         if (v.pos < 0.0) { v.pos += 1.0; ++v.age; continue; }
+
         const int idx = (int) v.pos;
         if (idx >= endSample) { v.active = false; break; }
 
-        const float requestedSampleRate = juce::jlimit(1000.0f, (float) currentSampleRate, param(apvts, "sampleRate"));
-        const double holdInterval = std::max(1.0, currentSampleRate / requestedSampleRate);
-        if (!v.hasHeldSample || v.sampleRatePhase <= 0.0)
+        const int next = std::min(idx + 1, endSample - 1);
+        const float frac = (float) (v.pos - idx);
+        const float progress = (float) idx / (float) std::max(1, total - 1);
+
+        // Velocity is an intrinsic physical response, not an optional effect.
+        // At velocity 1.0 all of these velocity terms become neutral.
+        if (progress > v.maxProgress)
         {
-            const int next = std::min(idx + 1, endSample - 1);
-            const float frac = (float) (v.pos - idx);
-            v.heldSample = data[idx] + (data[next] - data[idx]) * frac;
-            v.hasHeldSample = true;
-            v.sampleRatePhase += holdInterval;
+            v.active = false;
+            break;
         }
 
-        const float raw = v.heldSample;
-        const float progress = (float) (idx - (int) (pad.startNorm * total)) / (float) std::max(1, endSample - (int) (pad.startNorm * total));
-        const float clampedProgress = juce::jlimit(0.0f, 1.0f, progress);
-        if (clampedProgress >= v.maxProgress) { v.active = false; break; }
-        const float normalizedLife = clampedProgress / std::max(0.001f, v.maxProgress);
-        const float transientShape = std::exp(-normalizedLife * 105.0f);
-        const float bodyShape = 0.50f + 0.50f * std::exp(-normalizedLife * 5.0f);
-        const float attackEnv = v.age < v.attack ? (float) v.age / std::max(1.0f, v.attack) : 1.0f;
-        const float decayExponent = juce::jlimit(0.18f, 5.5f, 0.22f + (1.0f - decay) * 3.8f) / v.decayScale;
-        const float tailShape = std::pow(std::max(0.0f, 1.0f - normalizedLife), decayExponent);
-        const float velocityTransient = 0.45f + transient * v.transientBoost * transientShape * (0.35f + 1.75f * v.velocity) * (0.45f + 0.95f * phy);
-        const float velocityBody = 0.35f + body * (0.25f + 1.35f * v.velocity) * (0.55f + 0.85f * phy * bodyShape);
-        v.lowpassState += v.lowpassCoeff * (raw - v.lowpassState);
-        const float spectral = v.lowpassState + v.brightnessAmount * (raw - v.lowpassState);
-        const float releaseEnv = v.sustain >= 0.999f ? 1.0f : (v.sustain + (1.0f - v.sustain) * std::max(0.0f, 1.0f - normalizedLife));
-        const float env = attackEnv * tailShape * releaseEnv;
-        const float dryOut = raw * v.gain * env;
-        const float processedOut = spectral * v.gain * velocityTransient * velocityBody * env;
-        const float out = dryOut + (processedOut - dryOut) * mix;
-        buffer.addSample(0, startSample + i, out);
-        if (buffer.getNumChannels() > 1) buffer.addSample(1, startSample + i, out);
-        v.sampleRatePhase -= 1.0;
-        if (v.sampleRatePhase <= 0.0) v.pos += v.rate * holdInterval;
+        const float velocity = v.velocity;
+        const float soft = 1.0f - velocity;
+
+        // Direct sample path when all user processing is neutral and the hit is
+        // hard enough to be neutral. Otherwise interpolate as needed.
+        const bool directSample = holdInterval <= 1.000001
+            && std::abs(v.rate - 1.0) < 0.000001
+            && pad.startNorm <= 0.000001f
+            && pad.endNorm >= 0.999999f
+            && std::abs(pad.tuneCents) < 0.0001f;
+
+        // Velocity attack: hard hits have no imposed attack envelope. Soft hits
+        // ramp in smoothly, giving the impression of a less forceful strike.
+        const float velocityAttackEnv = v.attack <= 0.0f ? 1.0f
+            : juce::jlimit(0.0f, 1.0f, (float) v.age / std::max(1.0f, v.attack));
+
+        // Global attack is layered on top and is neutral at zero.
+        const float globalAttackSamples = globalAttack * 0.100f * (float) currentSampleRate;
+        const float globalAttackEnv = globalAttackSamples <= 0.0f ? 1.0f
+            : juce::jlimit(0.0f, 1.0f,
+                (float) v.age / std::max(1.0f, globalAttackSamples));
+
+        // Global release is neutral at zero. It fades the end of the hit rather
+        // than altering the imported source when left untouched.
+        const float remaining = (float) std::max(0, endSample - idx);
+        const float globalReleaseSamples = globalRelease * 0.250f * (float) currentSampleRate;
+        const float globalReleaseEnv = globalReleaseSamples <= 0.0f ? 1.0f
+            : juce::jlimit(0.0f, 1.0f,
+                remaining / std::max(1.0f, globalReleaseSamples));
+
+        // Intrinsic velocity brightness: hard hits remain completely open;
+        // soft hits are progressively low-passed. This is calculated per hit,
+        // not stored as a user parameter.
+        const float velocityCutoff = 1800.0f + 18200.0f * std::pow(velocity, 0.58f);
+        const float velocityCoeff = velocity >= 0.999999f ? 1.0f
+            : 1.0f - std::exp(-2.0f * juce::MathConstants<float>::pi
+                * velocityCutoff / (float) currentSampleRate);
+
+        for (int outCh = 0; outCh < buffer.getNumChannels(); ++outCh)
+        {
+            const int srcCh = std::min(outCh, channels - 1);
+            const auto* data = pad.sample->getReadPointer(srcCh);
+
+            float raw;
+            if (directSample)
+                raw = data[idx];
+            else
+                raw = data[idx] + (data[next] - data[idx]) * frac;
+
+            float out = raw;
+
+            // Intrinsic velocity filtering. At maximum velocity this is a
+            // perfect bypass, preserving the imported waveform.
+            if (velocity < 0.999999f)
+            {
+                const size_t stateCh = (size_t) std::min(outCh, 1);
+                v.lowpassState[stateCh] += velocityCoeff
+                    * (raw - v.lowpassState[stateCh]);
+                out = v.lowpassState[stateCh];
+            }
+
+            // Optional user filter. Neutral position is a true bypass.
+            if (!globalFilterBypassed)
+            {
+                const size_t stateCh = (size_t) std::min(outCh, 1);
+                v.globalFilterState[stateCh] += globalFilterCoeff
+                    * (out - v.globalFilterState[stateCh]);
+                out = v.globalFilterState[stateCh];
+            }
+
+            out *= v.gain * velocityAttackEnv * globalAttackEnv * globalReleaseEnv;
+            buffer.addSample(outCh, startSample + i, out);
+        }
+
+        if (holdInterval <= 1.000001)
+            v.pos += v.rate;
+        else
+        {
+            v.sampleRatePhase -= 1.0;
+            if (v.sampleRatePhase <= 0.0)
+            {
+                v.sampleRatePhase += holdInterval;
+                v.pos += v.rate * holdInterval;
+            }
+        }
         ++v.age;
-    }
-}
-
-void PhysicalDrumEngineAudioProcessor::applyLimiter(juce::AudioBuffer<float>& buffer)
-{
-    if (param(apvts, "limiter") < 0.5f) return;
-    const float ceiling = dbToGain(param(apvts, "ceiling"));
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
-    {
-        auto* d = buffer.getWritePointer(ch);
-        for (int i = 0; i < buffer.getNumSamples(); ++i)
-        {
-            const float x = d[i];
-            const float sign = x < 0.0f ? -1.0f : 1.0f;
-            d[i] = sign * std::min(std::abs(x), ceiling);
-        }
     }
 }
 
@@ -326,7 +357,6 @@ void PhysicalDrumEngineAudioProcessor::processBlock(juce::AudioBuffer<float>& bu
         for (auto& v : voices) renderVoice(v, buffer, renderStart, totalSamples - renderStart);
 
     buffer.applyGain(dbToGain(param(apvts, "output")));
-    applyLimiter(buffer);
     updateMeters(buffer);
 }
 
@@ -340,8 +370,13 @@ bool PhysicalDrumEngineAudioProcessor::loadSampleForPad(int padIndex, const juce
     pads[padIndex].sample = std::move(audio);
     pads[padIndex].sampleRate = reader->sampleRate;
     pads[padIndex].sampleFile = file;
+    // A newly imported sample starts completely neutral. Any previous per-pad
+    // edits are cleared so a replacement sample cannot inherit old processing.
+    pads[padIndex].trim = 1.0f;
+    pads[padIndex].tuneCents = 0.0f;
     pads[padIndex].startNorm = 0.0f;
     pads[padIndex].endNorm = 1.0f;
+    pads[padIndex].level = 1.0f;
     return true;
 }
 
@@ -378,9 +413,7 @@ void PhysicalDrumEngineAudioProcessor::resetParametersToDefaults()
 {
     static constexpr const char* ids[] =
     {
-        "physicality", "transient", "attack", "brightness", "pitch", "body",
-        "decay", "timing", "variation", "output", "mix", "sampleRate",
-        "sustain", "release", "limiter", "ceiling"
+        "sampleRate", "output", "filter", "attack", "release"
     };
 
     for (const auto* id : ids)
@@ -408,7 +441,7 @@ bool PhysicalDrumEngineAudioProcessor::saveKit(const juce::File& file)
 {
     if (file == juce::File()) return false;
     auto root = std::make_unique<juce::XmlElement>("PHYSICAL_DRUM_KIT");
-    root->setAttribute("version", "1.9");
+    root->setAttribute("version", "2.0");
     if (auto params = apvts.copyState().createXml()) root->addChildElement(params.release());
     for (int i = 0; i < numPads; ++i)
     {
@@ -482,7 +515,7 @@ bool PhysicalDrumEngineAudioProcessor::loadKit(const juce::File& file)
 void PhysicalDrumEngineAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
     auto root = std::make_unique<juce::XmlElement>("PHYSICAL_DRUM_STATE");
-    root->setAttribute("version", "1.9.1");
+    root->setAttribute("version", "2.0");
 
     if (auto params = apvts.copyState().createXml())
         root->addChildElement(params.release());
